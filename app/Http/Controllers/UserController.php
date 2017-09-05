@@ -16,7 +16,7 @@ class UserController extends Controller
 	public function register(Request $request)
 	{
 		$this->validate($request, [
-					   'email' => 'bail|required|email|unique:users',
+					   'email' => 'bail|required|email|unique:'.User::TABLE_NAME,
 					   'password' => 'bail|required|confirmed|min:6'
 					   ]);
 
@@ -64,7 +64,7 @@ class UserController extends Controller
 		if (! $user) throw new NotLoggedInException;
 
 		$this->validate($request, [
-					   'email' => 'bail|required|email|unique:users,email,'.$user->id,
+					   'email' => 'bail|required|email|unique:'.User::TABLE_NAME.',email,'.$user->id,
 					   'name' => 'bail',
 					   'phone' => 'bail|numeric|digits_between:8,15',
 					   'birthday' => 'bail|date_format:d-m-Y|before:'.date('d-m-Y')

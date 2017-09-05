@@ -20,6 +20,8 @@ class User extends Model implements
      * @var array
      */
 
+    const TABLE_NAME = 'users';
+
     protected $fillable = [
         'name', 'email',
     ];

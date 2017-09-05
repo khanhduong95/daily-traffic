@@ -19,41 +19,55 @@ class TrafficController extends Controller
 	const MAX_LONGITUDE = 180;
 	private $dates;
 	private $years;
+	private $minutes;
 
 	function __construct()
 	{
+		$this->minutes = [0, 15, 30, 45];
 		$this->dates = ['everyday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 		$this->years = [date('Y'), date('Y', strtotime('+1 year'))];
 	}
 
-	private function getFrequencies($freqStr)
+	private function formatDoubleNumber($smallNumber)
 	{
-		$parts = explode(' ', $freqStr);
-		if (count($parts) != 3) throw new InvalidFrequencyException;
-
-		$year = $parts[2];
-		if (!in_array($year, $this->years)) throw new Exception('You can only choose this year or next year!');
-
-		return $this->getMonths($year, $parts[1], $parts[0]);
+		return $smallNumber < 10 ? '0'.$smallNumber : $smallNumber;
 	}
 
-	private function getMonths($year, $month, $day)
+	private function getFrequency($freqStr)
+	{
+		$parts = explode(' ', $freqStr);
+		if (count($parts) != 5) throw new InvalidFrequencyException;
+
+		$year = $parts[2];
+		if (!in_array($year, $this->years)) 
+			throw new Exception('You can only choose one of the following year: '.implode(', ', $this->years));
+		
+		$hour = intval($parts[3]);
+		if ($hour < 0 || $hour > 23) throw new Exception('Hour is not valid.');
+		$minute = intval($parts[4]);
+		if (!in_array($minute, $this->minutes)) 
+			throw new Exception('You can only choose one of the following minute: '.implode(', ', $this->minutes));
+
+		return $this->getMonths($year, $parts[1], $parts[0], $this->formatDoubleNumber($hour), $this->formatDoubleNumber($minute));
+	}
+
+	private function getMonths($year, $month, $day, $hour, $minute)
 	{
 		if ($month == 'everymonth'){
 			$res = [];
 			for ($i = 1; $i < 13; $i++){
-				$res = array_merge($res, $this->getDays($year, $i, $day));
+				$res = array_merge($res, $this->getDays($year, $this->formatDoubleNumber($i), $day, $hour, $minute));
 			}
 			return $res;
 		}
 		else {
 			$month = intval($month);
-			if ($month < 1 || $month > 12) throw new Exception('Month is not valid!');
-			return $this->getDays($year, $month, $day);
+			if ($month < 1 || $month > 12) throw new Exception('Month is not valid.');
+			return $this->getDays($year, $this->formatDoubleNumber($month), $day, $hour, $minute);
 		}
 	}
 
-	private function getDays($year, $month, $day)
+	private function getDays($year, $month, $day, $hour, $minute)
 	{
 		$res = [];
 		if (in_array($day, $this->dates)){
@@ -61,8 +75,15 @@ class TrafficController extends Controller
 				$time = strtotime($i.'-'.$month.'-'.$year);
 				if (date('m', $time) != $month) continue;
 			        if ($day != 'everyday' && date('dayname', $time) != $day) continue;
-				$res[] = $year.'-'.$month.'-'.$i.' '.'00:00:00';				
+				$res[] = $year.'-'.$month.'-'.$this->formatDoubleNumber($i).' '.$hour.':'.$minute.':00';				
 			}
+		}
+		else {
+			$day = intval($day);
+			if ($day < 1 || $day > 31) throw new Exception('Day is not valid.');
+			$time = strtotime($day.'-'.$month.'-'.$year);
+			if (date('m', $time) == $month)
+				$res[] = $year.'-'.$month.'-'.$this->formatDoubleNumber($day).' '.$hour.':'.$minute.':00';
 		}
 		return $res;
 	}
@@ -79,7 +100,10 @@ class TrafficController extends Controller
 					   'frequency' => 'bail|required'
 					   ]);
 		
-		$frequencies = $this->getFrequencies($request->input('frequency'));
+		$frequency = $this->getFrequency($request->input('frequency'));
+
+		if (empty($frequency)) throw new Exception('Frequency is not valid.');
+
 		$latitude = $request->input('latitude');
 		$longitude = $request->input('longitude');
 		
@@ -95,16 +119,16 @@ class TrafficController extends Controller
 						'place_id' => $placeId
 						])->get();
 
-		$existFreqs = [];
+		$existTimes = [];
 		foreach ($existTraffic as $tk){
-			$existFreqs[] = $tk->frequency;
+			$existTimes[] = $tk->time;
 		}
 		$toInsertTraffic = [];
-		foreach (array_diff($frequencies, $existFreqs) as $fk){
+		foreach (array_diff($frequency, $existTimes) as $tk){
 			$toInsertTraffic[] = [
 					      'user_id' => $userId,
 					      'place_id' => $placeId,
-					      'frequency' => $fk
+					      'time' => $tk
 					      ];
 		}
 		Traffic::insert($toInsertTraffic);
@@ -119,7 +143,7 @@ class TrafficController extends Controller
 		$userId = $user->id;
 
 		$traffic = Traffic::find($id);
-		if (! $traffic) throw new Exception('Traffic not found!');
+		if (! $traffic) throw new Exception('Traffic not found.');
 		if ($traffic->user_id != $userId) throw new NoPermissionException;
 		$traffic->delete();
 
@@ -132,18 +156,18 @@ class TrafficController extends Controller
 		if (! $user) throw new NotLoggedInException;
 		
 		$userId = $user->id;
-		if (! Place::find($id)) throw new Exception('Place not found!');
+		if (! Place::find($id)) throw new Exception('Place not found.');
 
 		$this->validate($request, [
 					   'frequency' => 'bail|required'
 					   ]);
 		
-		$frequencies = $this->getFrequencies($request->input('frequency'));
+		$frequency = $this->getFrequency($request->input('frequency'));
 		
 	        Traffic::where([
 				'user_id' => $userId,
 				'place_id' => $id
-				])->whereIn('frequency', $frequencies)->delete();
+				])->whereIn('time', $frequency)->delete();
 
 		return $this->renderJson('');
 	}

@@ -15,8 +15,8 @@ class CreateTrafficTable extends Migration
 		Schema::create('traffic', function (Blueprint $table) {
 				$table->bigIncrements('id');
 
-				$table->dateTime('frequency');
-				$table->index('frequency');
+				$table->dateTime('time');
+				$table->index('time');
 
 				$table->bigInteger('user_id')->unsigned();
 				$table->foreign('user_id')
@@ -33,7 +33,7 @@ class CreateTrafficTable extends Migration
 				$table->index('place_id');
 
 				$table->unique([
-						'frequency', 
+						'time', 
 						'user_id',
 						'place_id'
 						]);

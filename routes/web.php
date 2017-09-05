@@ -23,6 +23,9 @@ $app->put('/api/password', 'UserController@updatePassword');
 $app->get('/api/login', 'UserController@login');
 $app->delete('/api/logout', 'UserController@logout');
 
+//Place
+$app->get('/api/places', 'PlaceController@getPlacesByUser');
+
 //Traffic
 $app->post('/api/traffic', 'TrafficController@addTraffic');
 $app->delete('/api/traffic/{id}', 'TrafficController@deleteTraffic');

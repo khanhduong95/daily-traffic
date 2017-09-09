@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use Exception;
 use App\User;
-use App\Exceptions\NotLoggedInException;
 use App\Exceptions\IncorrectPasswordException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
-use vakata\random\Generator;
+use Rych\Random\Random;
 
 class UserController extends Controller
 {
@@ -34,17 +33,21 @@ class UserController extends Controller
 	public function login(Request $request)
 	{		
 		$email = $request->header('email');
-		if (! $email) throw new Exception('The email field is required.');		
 		$password = $request->header('password');
-		if (! $password) throw new Exception('The password field is required.');		
+
+		if (! $email || !$password){
+			$this->validate($request, [
+						   'email' => 'bail|required|exists:'.User::TABLE_NAME,
+						   'password' => 'bail|required|'
+						   ]);
+		}
 
 		$user = User::where('email', $email)->first();
-
 		if (! $user) throw new Exception('User not found.');
 
 		if (! Hash::check($password, $user->password)) throw new IncorrectPasswordException;
 		if (! $user->api_token) 
-			$user->api_token = dechex(time()).Generator::string(16);
+			$user->api_token = dechex(time()).(new Random)->getRandomString(16);
 
 		$user->save();
 		$user->token = $user->api_token;
@@ -61,7 +64,6 @@ class UserController extends Controller
 	public function updateInfo(Request $request)
 	{
 		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
 
 		$this->validate($request, [
 					   'email' => 'bail|required|email|unique:'.User::TABLE_NAME.',email,'.$user->id,
@@ -81,7 +83,6 @@ class UserController extends Controller
 	public function updatePassword(Request $request)
 	{
 		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
 		$this->validate($request, [
 					   'current_password' => 'bail|required|min:6',
 					   'new_password' => 'bail|required|confirmed|min:6'
@@ -96,7 +97,6 @@ class UserController extends Controller
 	public function logout(Request $request)
 	{
 		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
 		$user->api_token = null;
 		$user->save();
 		return $this->renderJson('');
@@ -105,8 +105,6 @@ class UserController extends Controller
 	public function delete(Request $request)
 	{
 		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
-
 		$user->delete();
 		return $this->renderJson('');
 	}

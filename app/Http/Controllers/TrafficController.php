@@ -6,8 +6,6 @@ use Exception;
 use App\User;
 use App\Place;
 use App\Traffic;
-use App\Exceptions\NotLoggedInException;
-use App\Exceptions\IncorrectPasswordException;
 use App\Exceptions\InvalidFrequencyException;
 use App\Exceptions\NoPermissionException;
 use Illuminate\Http\Request;
@@ -90,10 +88,7 @@ class TrafficController extends Controller
 
 	public function addTraffic(Request $request)
 	{
-		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
-		
-		$userId = $user->id;
+		$userId = $request->user()->id;
 		$this->validate($request, [
 					   'latitude' => 'bail|required|numeric|between:'.(-self::MAX_LATITUDE).','.self::MAX_LATITUDE,
 					   'longitude' => 'bail|required|numeric|between:'.(-self::MAX_LONGITUDE).','.self::MAX_LONGITUDE,
@@ -138,9 +133,7 @@ class TrafficController extends Controller
 
 	public function deleteTraffic(Request $request, $id)
 	{
-		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
-		$userId = $user->id;
+		$userId = $request->user()->id;
 
 		$traffic = Traffic::find($id);
 		if (! $traffic) throw new Exception('Traffic not found.');
@@ -152,10 +145,7 @@ class TrafficController extends Controller
 
 	public function deleteTrafficByPlace(Request $request, $id)
 	{
-		$user = $request->user();
-		if (! $user) throw new NotLoggedInException;
-		
-		$userId = $user->id;
+		$userId = $request->user()->id;
 		if (! Place::find($id)) throw new Exception('Place not found.');
 
 		$this->validate($request, [

@@ -11,9 +11,12 @@
 |
 */
 
-// $factory->define(App\User::class, function ($faker) {
-//     return [
-//         'name' => $faker->name,
-//         'email' => $faker->email,
-//     ];
-// });
+$factory->define(App\User::class, function ($faker) {
+    return [
+        'name' => $faker->name,
+        'email' => $faker->email,
+        'birthday' => $faker->date($format = 'd-m-Y', $max = 'last monday'),
+        'phone' => $faker->phoneNumber,
+        'password' => app('hash')->make(str_random(10)),
+    ];
+});

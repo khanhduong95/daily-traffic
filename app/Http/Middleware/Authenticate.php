@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Contracts\Auth\Factory as Auth;
-use App\Exceptions\NotLoggedInException;
+use Illuminate\Auth\AuthenticationException;
 
 class Authenticate
 {
@@ -38,7 +38,7 @@ class Authenticate
     {
         if ($this->auth->guard($guard)->guest()) {
             /* return response('Unauthorized.', 401); */
-		throw new NotLoggedInException;
+		throw new AuthenticationException;
         }
 
         return $next($request);

@@ -3,11 +3,16 @@
 namespace App\Exceptions;
 
 use Exception;
+use App\Exceptions\IncorrectPasswordException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Auth\AuthenticationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Laravel\Lumen\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\Debug\Exception\FlattenException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 class Handler extends ExceptionHandler
 {
@@ -47,15 +52,37 @@ class Handler extends ExceptionHandler
     {
 	    $cause = $e->getPrevious();
 	    if ($cause != null) $e = $cause;
-	    return response()->json([
-	    			     'error' => 1,
-				     'message' => $e instanceof ValidationException ? $e->validator->errors()->first() : $e->getMessage(),
-	    			     'data' => [
-	    					'code' => $e->getCode(),
-	    					'type' => get_class($e)
-	    					]
-	    			     ]);
 
-	    /* return parent::render($request, $e); */
+        $status = null;
+        $message = null;
+        if ($e instanceof HttpResponseException) {
+            $status = $e->getResponse()->getStatusCode();
+        }
+        elseif ($e instanceof ModelNotFoundException) {
+            $e = new NotFoundHttpException($e->getMessage(), $e);
+        } 
+        elseif ($e instanceof AuthorizationException) {
+            $e = new HttpException(403, $e->getMessage());
+        }
+        elseif ($e instanceof IncorrectPasswordException) {
+            $e = new UnauthorizedHttpException('Basic', $e->getMessage());
+        }
+        elseif ($e instanceof AuthenticationException) {
+            $e = new UnauthorizedHttpException('Token', $e->getMessage());
+        }
+        elseif ($e instanceof ValidationException && $e->getResponse()) {
+            $status = $e->getResponse()->getStatusCode();
+            $message = $e->validator->errors()->first();
+        }
+
+        $fe = FlattenException::create($e);
+
+        return response()->json([
+            'code' => $e->getCode(),
+            'message' => $message ? $message : $e->getMessage(),
+            'type' => get_class($e),
+        ], $status ? $status : $fe->getStatusCode(), $fe->getHeaders());
+
+	    // return parent::render($request, $e);
     }
 }

@@ -48,6 +48,6 @@ class CreateTrafficTable extends Migration
 	 */
 	public function down()
 	{
-		Schema::drop('traffic');
+		Schema::dropIfExists('traffic');
 	}
 }

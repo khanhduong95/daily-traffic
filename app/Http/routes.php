@@ -1,36 +1,72 @@
 <?php
 
 /*
-|--------------------------------------------------------------------------
-| Application Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register all of the routes for an application.
-| It is a breeze. Simply tell Lumen the URIs it should respond to
-| and give it the Closure to call when that URI is requested.
-|
+  |--------------------------------------------------------------------------
+  | Application Routes
+  |--------------------------------------------------------------------------
+  |
+  | Here is where you can register all of the routes for an application.
+  | It is a breeze. Simply tell Lumen the URIs it should respond to
+  | and give it the Closure to call when that URI is requested.
+  |
 */
 
 /* $app->get('/', function () use ($app) { */
 /*     return $app->version(); */
 /* }); */
 
-$app->group(['namespace' => 'App\Http\Controllers', 'middleware' => 'auth'], function () use ($app) {
-		//User
-		$app->put('/api/user', 'UserController@updateInfo');
-		$app->put('/api/password', 'UserController@updatePassword');
-		$app->delete('/api/logout', 'UserController@logout');
+$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api', 'middleware' => 'auth'], function () use ($app) {
+    //User
+    $app->get('me', 'UserController@current');
 
-		//Place
-		$app->get('/api/places', 'PlaceController@getPlacesByUser');
+    //Place
+    $app->delete('place/{id}', 'PlaceController@delete');
+});
 
-		//Traffic
-		$app->post('/api/traffic', 'TrafficController@addTraffic');
-		$app->delete('/api/traffic/{id}', 'TrafficController@deleteTraffic');
-		$app->delete('/api/traffic/place/{id}', 'TrafficController@deleteTrafficByPlace');
-	});
+$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/user', 'middleware' => 'auth'], function () use ($app) {
+    //User
+    $app->get('', 'UserController@index');
+    $app->put('{id}/info', 'UserController@updateInfo');
+    $app->put('{id}/password', 'UserController@updatePassword');
+    $app->delete('{id}', 'UserController@delete');
 
-//User
-$app->post('/api/register', 'UserController@register');
-$app->get('/api/login', 'UserController@login');
-$app->get('/api/user/{id}', 'UserController@detail');
+    //Place
+    $app->get('{id}/place', 'PlaceController@indexByUser');
+
+    //Traffic
+    $app->get('{id}/traffic', 'TrafficController@indexByUser');
+    $app->post('{id}/traffic', 'TrafficController@addByUser');
+    $app->get('{user_id}/place/{place_id}/traffic', 'TrafficController@indexByPlaceAndUser');
+    $app->post('{user_id}/place/{place_id}/traffic', 'TrafficController@addByPlaceAndUser');
+    $app->delete('{user_id}/place/{place_id}/traffic', 'TrafficController@deleteByPlaceAndUser');
+
+    //Permission
+    $app->get('{id}/permission', 'PermissionController@index');
+    $app->post('{id}/permission', 'PermissionController@addByUser');
+});
+
+$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/traffic', 'middleware' => 'auth'], function () use ($app) {
+    //Traffic
+    $app->get('', 'TrafficController@index');
+    $app->get('{id}', 'TrafficController@detail');
+    $app->delete('{id}', 'TrafficController@delete');
+});
+
+$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/permission', 'middleware' => 'auth'], function () use ($app) {
+    //Permission
+    $app->get('', 'PermissionController@index');
+    $app->get('{id}', 'PermissionController@detail');
+    $app->put('{id}', 'PermissionController@update');
+    $app->delete('{id}', 'PermissionController@delete');
+});
+
+$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api'], function () use ($app) {		
+    //User
+    $app->post('user', 'UserController@add');
+    $app->get('user/{id}', 'UserController@detail');	
+    $app->get('token', 'UserController@getToken');
+		
+    //Place
+    $app->get('place', 'PlaceController@index');
+    $app->get('place/{id}', 'PlaceController@detail');
+});

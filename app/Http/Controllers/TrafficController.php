@@ -6,160 +6,206 @@ use Exception;
 use App\User;
 use App\Place;
 use App\Traffic;
-use App\Exceptions\InvalidFrequencyException;
-use App\Exceptions\NoPermissionException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Illuminate\Http\Request;
 
 class TrafficController extends Controller
 {
-
 	const MAX_LATITUDE = 90;
 	const MAX_LONGITUDE = 180;
-	private $dates;
-	private $years;
-	private $minutes;
+	private $dates = ['everyday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+	private $minutes = [0, 15, 30, 45];
 
-	function __construct()
+	public function index(Request $request)
+	{		
+		$this->authorize('readList', Traffic::class);
+
+		$ps = $request->input('page_size');
+		$pageSize = $this->getPageSize($request->input('page_size'));
+
+		$res = Traffic::orderBy('id', 'desc')->paginate($pageSize);
+		return response()->json($res);
+	}
+
+	public function indexByUser(Request $request, $id)
+	{		
+		$user = User::findOrFail($id);
+		$this->authorize('read', $user);
+
+		$pageSize = $this->getPageSize($request->input('page_size'));
+
+		$res = Traffic::where('user_id', $id)->orderBy('id', 'desc')->paginate($pageSize);
+		return response()->json($res);
+	}
+
+	public function indexByPlaceAndUser(Request $request, $place_id, $user_id)
+	{		
+		$user = User::findOrFail($user_id);
+		$this->authorize('read', $user);
+
+		$ps = $request->input('page_size');
+		$pageSize = $this->getPageSize($request->input('page_size'));
+
+		$res = Traffic::where([
+            'user_id' => $user_id,
+            'place_id' => $place_id
+        ])->orderBy('id', 'desc')->paginate($pageSize);
+		return response()->json($res);
+	}
+
+	public function detail($id)
 	{
-		$this->minutes = [0, 15, 30, 45];
-		$this->dates = ['everyday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-		$this->years = [date('Y'), date('Y', strtotime('+1 year'))];
+		$traffic = Traffic::findOrFail($id);
+		$this->authorize('read', $traffic);
+
+		return response()->json($traffic);
+	}
+
+	public function addByUser(Request $request, $user_id)
+	{
+		return $this->createTraffic($request, [
+            'latitude' => 'bail|required|numeric|between:'.(-self::MAX_LATITUDE).','.self::MAX_LATITUDE,
+            'longitude' => 'bail|required|numeric|between:'.(-self::MAX_LONGITUDE).','.self::MAX_LONGITUDE,
+        ], $user_id);
+	}
+
+	public function addByPlaceAndUser(Request $request, $place_id, $user_id)
+	{
+        return $this->createTraffic($request, [], $user_id, $place_id);
+	}
+
+	public function delete(Request $request, $id)
+	{
+		$traffic = Traffic::findOrFail($id);
+		$this->authorize('write', $traffic);
+
+		$traffic->delete();
+		return response(null, 204);
+	}
+
+	public function deleteByPlaceAndUser(Request $request, $place_id, $user_id)
+	{
+		$user = User::findOrFail($user_id);
+		$this->authorize('write', $user);
+		
+        $validations = ['time' => 'bail|required|date_format:H:i'];
+        $weekly = $request->input('weekly');
+        if ($weekly && in_array($weekly, $this->dates)){
+            $validations['date'] = 'bail|required|date_format:m-Y';
+        }
+        else {
+            $validations['date'] = 'bail|required|date_format:d-m-Y';
+        }
+
+		$this->validate($request, $validations);
+		
+		$frequency = $this->getFrequency($request->input('date'), $request->input('time'), $weekly);
+
+        Traffic::where([
+            'user_id' => $user_id,
+            'place_id' => $place_id,
+        ])->whereIn('time', $frequency)->firstOrFail();
+
+        Traffic::where([
+            'user_id' => $user_id,
+            'place_id' => $place_id,
+        ])->whereIn('time', $frequency)->delete();
+
+		return response(null, 204);
+	}
+
+    private function createTraffic($request, $validations, $userId, $placeId = null)
+    {
+		$user = User::findOrFail($userId);
+		$this->authorize('write', $user);
+
+        $validations['time'] = 'bail|required|date_format:H:i';
+        $weekly = $request->input('weekly');
+        if ($weekly && in_array($weekly, $this->dates)){
+            $validations['date'] = 'bail|required|date_format:m-Y|after:-1 year|before:+2 years';
+        }
+        else {
+            $validations['date'] = 'bail|required|date_format:d-m-Y|after:-1 year|before:+2 years';
+        }
+
+		$this->validate($request, $validations);
+
+        if ($placeId){
+            Place::findOrFail($placeId);
+        }
+        else {
+            $placeId = Place::firstOrCreate([
+                'latitude' => $request->input('latitude'),
+                'longitude' => $request->input('longitude'),
+            ])->id;
+        }
+        
+		$frequency = $this->getFrequency($request->input('date'), $request->input('time'), $weekly);
+
+		$existTraffic = Traffic::select('time')
+                      ->where([
+                          'user_id' => $userId,
+                          'place_id' => $placeId
+                      ])->get();
+
+		$existTimes = [];
+		foreach ($existTraffic as $tk){
+            $existTime = $tk->time;
+			$existTimes[date_create_from_format('Y-m-d H:i:s', $existTime)->getTimestamp()] = $existTime;
+		}
+
+		$toInsertTraffic = [];
+		foreach (array_diff($frequency, array_keys($existTimes)) as $tk){
+			$toInsertTraffic[] = [
+                'user_id' => $userId,
+                'place_id' => $placeId,
+                'time' => $tk,
+            ];
+		}
+        if (empty($toInsertTraffic)) throw new ConflictHttpException;
+
+		Traffic::insert($toInsertTraffic);
+
+		return response(null, 201, ['Location' => '/api/user/'.$userId.'/place/'.$placeId.'/traffic']);
+    }
+
+    
+	private function getFrequency($date, $time, $weekly = null)
+	{
+        $timeParts = explode(':', $time);
+		$hour = intval($timeParts[0]);
+		$minute = intval($timeParts[1]);
+		if (!in_array($minute, $this->minutes)) 
+			throw new UnprocessableEntityHttpException('You can only choose one of the following minute: '.implode(', ', $this->minutes));
+
+		return $this->getDays($date, $hour.':'.$this->formatDoubleNumber($minute).':00', $weekly);
+	}
+
+	private function getDays($date, $time, $weekly)
+	{
+		$res = [];
+        
+		if ($weekly && in_array($weekly, $this->dates)){
+			for ($i = 1; $i < 32; $i++){
+                $dateStr = $i.'-'.$date;
+                if ($weekly != 'everyday' && date('l', strtotime($dateStr)) != $weekly) continue;
+
+                $checkFormat = date_parse_from_format('d-m-Y', $dateStr);
+                if ($checkFormat['warning_count'] > 0 || $checkFormat['error_count'] > 0) continue;
+
+                $res[] = $checkFormat['year'].'-'.$checkFormat['month'].'-'.$checkFormat['day'].' '.$time;
+			}
+		}
+		else {
+            $res[] = date_create_from_format('d-m-Y H:i:s', $date.' '.$time)->format('Y-m-d H:i:s');
+		}
+		return $res;
 	}
 
 	private function formatDoubleNumber($smallNumber)
 	{
 		return $smallNumber < 10 ? '0'.$smallNumber : $smallNumber;
-	}
-
-	private function getFrequency($freqStr)
-	{
-		$parts = explode(' ', $freqStr);
-		if (count($parts) != 5) throw new InvalidFrequencyException;
-
-		$year = $parts[2];
-		if (!in_array($year, $this->years)) 
-			throw new Exception('You can only choose one of the following year: '.implode(', ', $this->years));
-		
-		$hour = intval($parts[3]);
-		if ($hour < 0 || $hour > 23) throw new Exception('Hour is not valid.');
-		$minute = intval($parts[4]);
-		if (!in_array($minute, $this->minutes)) 
-			throw new Exception('You can only choose one of the following minute: '.implode(', ', $this->minutes));
-
-		return $this->getMonths($year, $parts[1], $parts[0], $this->formatDoubleNumber($hour), $this->formatDoubleNumber($minute));
-	}
-
-	private function getMonths($year, $month, $day, $hour, $minute)
-	{
-		if ($month == 'everymonth'){
-			$res = [];
-			for ($i = 1; $i < 13; $i++){
-				$res = array_merge($res, $this->getDays($year, $this->formatDoubleNumber($i), $day, $hour, $minute));
-			}
-			return $res;
-		}
-		else {
-			$month = intval($month);
-			if ($month < 1 || $month > 12) throw new Exception('Month is not valid.');
-			return $this->getDays($year, $this->formatDoubleNumber($month), $day, $hour, $minute);
-		}
-	}
-
-	private function getDays($year, $month, $day, $hour, $minute)
-	{
-		$res = [];
-		if (in_array($day, $this->dates)){
-			for ($i = 1; $i < 32; $i++){
-				$time = strtotime($i.'-'.$month.'-'.$year);
-				if (date('m', $time) != $month) continue;
-			        if ($day != 'everyday' && date('dayname', $time) != $day) continue;
-				$res[] = $year.'-'.$month.'-'.$this->formatDoubleNumber($i).' '.$hour.':'.$minute.':00';				
-			}
-		}
-		else {
-			$day = intval($day);
-			if ($day < 1 || $day > 31) throw new Exception('Day is not valid.');
-			$time = strtotime($day.'-'.$month.'-'.$year);
-			if (date('m', $time) == $month)
-				$res[] = $year.'-'.$month.'-'.$this->formatDoubleNumber($day).' '.$hour.':'.$minute.':00';
-		}
-		return $res;
-	}
-
-	public function addTraffic(Request $request)
-	{
-		$userId = $request->user()->id;
-		$this->validate($request, [
-					   'latitude' => 'bail|required|numeric|between:'.(-self::MAX_LATITUDE).','.self::MAX_LATITUDE,
-					   'longitude' => 'bail|required|numeric|between:'.(-self::MAX_LONGITUDE).','.self::MAX_LONGITUDE,
-					   'frequency' => 'bail|required'
-					   ]);
-		
-		$frequency = $this->getFrequency($request->input('frequency'));
-
-		if (empty($frequency)) throw new Exception('Frequency is not valid.');
-
-		$latitude = $request->input('latitude');
-		$longitude = $request->input('longitude');
-		
-		$place = Place::firstOrCreate([
-					       'latitude' => $latitude,
-					       'longitude' => $longitude
-					       ]);
-
-		$placeId = $place->id;
-		
-		$existTraffic = Traffic::where([
-						'user_id' => $userId,
-						'place_id' => $placeId
-						])->get();
-
-		$existTimes = [];
-		foreach ($existTraffic as $tk){
-			$existTimes[] = $tk->time;
-		}
-		$toInsertTraffic = [];
-		foreach (array_diff($frequency, $existTimes) as $tk){
-			$toInsertTraffic[] = [
-					      'user_id' => $userId,
-					      'place_id' => $placeId,
-					      'time' => $tk
-					      ];
-		}
-		Traffic::insert($toInsertTraffic);
-
-		return $this->renderJson('');
-	}
-
-	public function deleteTraffic(Request $request, $id)
-	{
-		$userId = $request->user()->id;
-
-		$traffic = Traffic::find($id);
-		if (! $traffic) throw new Exception('Traffic not found.');
-		if ($traffic->user_id != $userId) throw new NoPermissionException;
-		$traffic->delete();
-
-		return $this->renderJson('');
-	}
-
-	public function deleteTrafficByPlace(Request $request, $id)
-	{
-		$userId = $request->user()->id;
-		if (! Place::find($id)) throw new Exception('Place not found.');
-
-		$this->validate($request, [
-					   'frequency' => 'bail|required'
-					   ]);
-		
-		$frequency = $this->getFrequency($request->input('frequency'));
-		
-	        Traffic::where([
-				'user_id' => $userId,
-				'place_id' => $id
-				])->whereIn('time', $frequency)->delete();
-
-		return $this->renderJson('');
 	}
 
 }

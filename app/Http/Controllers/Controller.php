@@ -7,12 +7,15 @@ use Laravel\Lumen\Routing\Controller as BaseController;
 class Controller extends BaseController
 {
 	//
-	protected function renderJson($data, $message = 'Success!')
+	protected function getPageSize($ps)
 	{
-		return response()->json([
-					 'error' => 0,
-					 'message' => $message,
-					 'data' => $data
-					 ]);
+		$pageSize = 15;
+		if ($ps != null){
+			$ps = intval($ps);
+			if ($ps <= 15 && $ps > 0){
+				$pageSize = $ps;
+			}
+		}
+		return $pageSize;
 	}
 }

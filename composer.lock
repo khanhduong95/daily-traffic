@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "43226113968853614e5c57bf6181c08a",
+    "content-hash": "e0bb981d065cf8af9e0a652709986ada",
     "packages": [
         {
             "name": "doctrine/inflector",
@@ -1576,63 +1576,6 @@
             "time": "2016-10-10T12:19:37+00:00"
         },
         {
-            "name": "rych/random",
-            "version": "v0.1.0",
-            "target-dir": "Rych/Random",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/rchouinard/rych-random.git",
-                "reference": "c728202f2ba60cf158a711c751979006944c4ec5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/rchouinard/rych-random/zipball/c728202f2ba60cf158a711c751979006944c4ec5",
-                "reference": "c728202f2ba60cf158a711c751979006944c4ec5",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=5.3.4"
-            },
-            "require-dev": {
-                "fabpot/php-cs-fixer": "0.4.*@dev",
-                "phpunit/phpunit": "3.7.*",
-                "satooshi/php-coveralls": "dev-master"
-            },
-            "suggest": {
-                "ext-mcrypt": "*",
-                "ext-openssl": "*"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "1.0-dev"
-                }
-            },
-            "autoload": {
-                "psr-0": {
-                    "Rych\\Random": ""
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Ryan Chouinard",
-                    "email": "rchouinard@gmail.com",
-                    "homepage": "http://ryanchouinard.com"
-                }
-            ],
-            "description": "Random data generator for PHP",
-            "homepage": "https://github.com/rchouinard/rych-random",
-            "keywords": [
-                "cryptography",
-                "random"
-            ],
-            "time": "2013-11-12T03:36:50+00:00"
-        },
-        {
             "name": "symfony/console",
             "version": "v3.0.9",
             "source": {
@@ -1751,7 +1694,7 @@
         },
         {
             "name": "symfony/event-dispatcher",
-            "version": "v3.3.8",
+            "version": "v3.3.9",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/event-dispatcher.git",
@@ -2434,16 +2377,16 @@
         },
         {
             "name": "phpdocumentor/reflection-common",
-            "version": "1.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpDocumentor/ReflectionCommon.git",
-                "reference": "144c307535e82c8fdcaacbcfc1d6d8eeb896687c"
+                "reference": "21bdeb5f65d7ebf9f43b1b25d404f87deab5bfb6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpDocumentor/ReflectionCommon/zipball/144c307535e82c8fdcaacbcfc1d6d8eeb896687c",
-                "reference": "144c307535e82c8fdcaacbcfc1d6d8eeb896687c",
+                "url": "https://api.github.com/repos/phpDocumentor/ReflectionCommon/zipball/21bdeb5f65d7ebf9f43b1b25d404f87deab5bfb6",
+                "reference": "21bdeb5f65d7ebf9f43b1b25d404f87deab5bfb6",
                 "shasum": ""
             },
             "require": {
@@ -2484,7 +2427,7 @@
                 "reflection",
                 "static analysis"
             ],
-            "time": "2015-12-27T11:43:31+00:00"
+            "time": "2017-09-11T18:02:19+00:00"
         },
         {
             "name": "phpdocumentor/reflection-docblock",
@@ -3391,7 +3334,7 @@
         },
         {
             "name": "symfony/yaml",
-            "version": "v3.3.8",
+            "version": "v3.3.9",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/yaml.git",

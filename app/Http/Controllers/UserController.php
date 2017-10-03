@@ -5,108 +5,148 @@ namespace App\Http\Controllers;
 use Exception;
 use App\User;
 use App\Exceptions\IncorrectPasswordException;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
-use Rych\Random\Random;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class UserController extends Controller
 {
+	public function index(Request $request)
+	{
+		$this->authorize('readList', User::class);
 
-	public function register(Request $request)
+		$pageSize = $this->getPageSize($request->input('page_size'));
+		$res = User::orderBy('id', 'desc')->paginate($pageSize);
+		return response()->json($res);
+	}
+
+	public function add(Request $request)
 	{
 		$this->validate($request, [
-					   'email' => 'bail|required|email|unique:'.User::TABLE_NAME,
-					   'password' => 'bail|required|confirmed|min:6'
-					   ]);
+            'email' => 'bail|required|email|unique:'.User::TABLE_NAME,
+            'password' => 'bail|required|min:6|alpha_dash',
+            'application_password' => 'bail|min:6|alpha_dash',
+            'birthday' => 'bail|date_format:d-m-Y|before:'.date('d-m-Y'),
+        ]);
 
 		$user = new User;
 		$user->email = $request->input('email');
 		$user->name = $request->input('name');
 		$user->birthday = $request->input('birthday');
 		$user->phone = $request->input('phone');
-		$user->password = Hash::make($request->input('password'));
+		$user->password = app('hash')->make($request->input('password'));
+		$user->application_password = $request->input('application_password') ? app('hash')->make($request->input('application_password')) : null;
 		$user->save();
 
-		return $this->renderJson('');
+		return response(null, 201, ['Location' => '/api/user/'.$user->id]);
 	}
 
-	public function login(Request $request)
+	public function current(Request $request)
+	{
+		return response()->json($request->user());
+	}
+
+	public function getToken(Request $request)
 	{		
 		$email = $request->header('email');
 		$password = $request->header('password');
 
-		if (! $email || !$password){
-			$this->validate($request, [
-						   'email' => 'bail|required|exists:'.User::TABLE_NAME,
-						   'password' => 'bail|required|'
-						   ]);
-		}
+        if (! $email || ! $password){
+            $email = $request->input('email');
+            $password = $request->input('password');
+        }
+		$user = User::where('email', $email)->firstOrFail();
 
-		$user = User::where('email', $email)->first();
-		if (! $user) throw new Exception('User not found.');
+		$this->checkPassword($password, $user->password);
 
-		if (! Hash::check($password, $user->password)) throw new IncorrectPasswordException;
-		if (! $user->api_token) 
-			$user->api_token = dechex(time()).(new Random)->getRandomString(16);
+        $user->api_token = dechex(time()).str_random(11);
+        $user->save();
 
-		$user->save();
-		$user->token = $user->api_token;
-		return $this->renderJson($user);
+		return response()->json(['token' => $user->api_token]);
+	}
+
+	public function deleteToken(Request $request)
+	{		
+		$user = $request->user();
+        $user->api_token = null;
+        $user->save();
+
+		return response(null, 204);
 	}
 
 	public function detail($id)
 	{
-		$user = User::find($id);
-		if (! $user) throw new Exception('User not found.');
+		$user = User::findOrFail($id);
 		return $this->renderJson($user);
 	}
 
-	public function updateInfo(Request $request)
+	public function updateInfo(Request $request, $id)
 	{
-		$user = $request->user();
+		$user = User::findOrFail($id);
+		$this->authorize('write', $user);
 
 		$this->validate($request, [
-					   'email' => 'bail|required|email|unique:'.User::TABLE_NAME.',email,'.$user->id,
-					   'name' => 'bail',
-					   'phone' => 'bail|numeric|digits_between:8,15',
-					   'birthday' => 'bail|date_format:d-m-Y|before:'.date('d-m-Y')
-					   ]);
+            'email' => 'bail|required|email|unique:'.User::TABLE_NAME.',email,'.$user->id,
+            'birthday' => 'bail|date_format:d-m-Y|before:'.date('d-m-Y')
+        ]);
 
 		$user->email = $request->input('email');
 		$user->name = $request->input('name');
 		$user->birthday = $request->input('birthday');
 		$user->phone = $request->input('phone');
-
-		return $this->renderJson($user);
+		$user->save();
+		return response(null, 204);
 	}
 
-	public function updatePassword(Request $request)
-	{
-		$user = $request->user();
+	public function updatePassword(Request $request, $id)
+	{        
+		$email = $request->header('email');
+		$password = $request->header('password');
+
+        if (! $email || ! $password){
+            $email = $request->input('email');
+            $password = $request->input('password');
+        }
+		$currentUser = User::where('email', $email)->firstOrFail();
+
+		$this->checkPassword($password, $currentUser->password);
+
+		$user = User::findOrFail($id);
+		$this->authorizeForUser($currentUser, 'write', $user);
+
 		$this->validate($request, [
-					   'current_password' => 'bail|required|min:6',
-					   'new_password' => 'bail|required|confirmed|min:6'
-					   ]);
-		if (! Hash::check($request->input('current_password'), $user->password)) throw new IncorrectPasswordException;
+            'new_password' => 'bail|required|min:6|alpha_dash',
+            'new_application_password' => 'bail|min:6|alpha_dash',
+        ]);
 
-		$user->password = Hash::make($request->input('new_password'));
+		$user->password = app('hash')->make($request->input('new_password'));
+		$user->application_password = $request->input('application_password') ? app('hash')->make($request->input('application_password')) : null;
 		$user->save();
-		return $this->renderJson('');
+		return response(null, 204);
 	}
 
-	public function logout(Request $request)
+	public function delete(Request $request, $id)
 	{
-		$user = $request->user();
-		$user->api_token = null;
-		$user->save();
-		return $this->renderJson('');
-	}
+		$email = $request->header('email');
+		$password = $request->header('password');
 
-	public function delete(Request $request)
-	{
-		$user = $request->user();
+        if (! $email || ! $password){
+            $email = $request->input('email');
+            $password = $request->input('password');
+        }
+		$currentUser = User::where('email', $email)->firstOrFail();
+
+		$this->checkPassword($password, $currentUser->password);
+
+		$user = User::findOrFail($id);
+		$this->authorizeForUser($currentUser, 'write', $user);
+
 		$user->delete();
-		return $this->renderJson('');
+		return response(null, 204);
 	}
 
+	private function checkPassword($inputPassword, $correctPassword)
+	{
+		if (! app('hash')->check($inputPassword, $correctPassword)) 
+			throw new IncorrectPasswordException;		
+	}
 }

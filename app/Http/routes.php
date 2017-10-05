@@ -18,6 +18,8 @@
 $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api', 'middleware' => 'auth'], function () use ($app) {
     //User
     $app->get('me', 'UserController@current');
+    $app->delete('token', 'UserController@deleteToken');
+    $app->put('password', 'UserController@updatePassword');
 
     //Place
     $app->delete('place/{id}', 'PlaceController@delete');
@@ -25,9 +27,7 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api', 'middlewa
 
 $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/user', 'middleware' => 'auth'], function () use ($app) {
     //User
-    $app->get('', 'UserController@index');
-    $app->put('{id}/info', 'UserController@updateInfo');
-    $app->put('{id}/password', 'UserController@updatePassword');
+    $app->put('{id}', 'UserController@updateInfo');
     $app->delete('{id}', 'UserController@delete');
 
     //Place
@@ -62,6 +62,7 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/permission'
 
 $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api'], function () use ($app) {		
     //User
+    $app->get('', 'UserController@index');
     $app->post('user', 'UserController@add');
     $app->get('user/{id}', 'UserController@detail');	
     $app->get('token', 'UserController@getToken');

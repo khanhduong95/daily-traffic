@@ -3,7 +3,6 @@
 namespace App\Exceptions;
 
 use Exception;
-use App\Exceptions\IncorrectPasswordException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -64,11 +63,8 @@ class Handler extends ExceptionHandler
         elseif ($e instanceof AuthorizationException) {
             $e = new HttpException(403, $e->getMessage());
         }
-        elseif ($e instanceof IncorrectPasswordException) {
-            $e = new UnauthorizedHttpException('Basic', $e->getMessage());
-        }
         elseif ($e instanceof AuthenticationException) {
-            $e = new UnauthorizedHttpException('Token', $e->getMessage());
+            $e = new UnauthorizedHttpException("Bearer realm=\"Please enter your valid API token.\"", $e->getMessage());
         }
         elseif ($e instanceof ValidationException && $e->getResponse()) {
             $status = $e->getResponse()->getStatusCode();

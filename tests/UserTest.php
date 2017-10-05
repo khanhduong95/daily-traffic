@@ -16,9 +16,7 @@ class UserTest extends TestCase
     public function testRegister()
     {
         $password = str_random(10);
-        $user = factory(User::class)->make([
-            'password' => $password,
-        ]);
+        $user = factory(User::class)->make();
 
         $this->post('/api/user', [
             'email' => $user->email,
@@ -35,24 +33,57 @@ class UserTest extends TestCase
     public function testLogin()
     {
         $password = str_random(10);
+        $app_password = str_random(10);
         $user = factory(User::class)->create([
             'password' => app('hash')->make($password),
+            'app_password' => app('hash')->make($app_password),
         ]);
 
+        //PASSWORD
         $this->get('/api/token', [
-            'HTTP_Email' => $user->email,
-            'HTTP_Password' => $password,
+            'HTTP_Authorization' => 'Basic '.base64_encode($user->email.':'.$password),
         ]);
 
         $this->assertEquals(200, $this->response->status());
 
-        $api_token = json_decode($this->response->getContent())->token;
+        $this->get('/api/token?email='.$user->email.'&password='.$password)
+                                      ->seeJson([
+                                          'full_permission' => true,
+                                      ]);
+
+        $this->assertEquals(200, $this->response->status());
+        
+        $token = json_decode($this->response->getContent())->token;
         $this->seeInDatabase(User::TABLE_NAME, [
             'email' => $user->email,
-            'api_token' => $api_token,
+            'token' => $token,
         ]);
 
-        $this->get('/api/me?token='.$api_token);
+        $this->get('/api/me?token='.$token);
+
+        $this->assertEquals(200, $this->response->status());
+
+        //APP_PASSWORD
+        $this->get('/api/token', [
+            'HTTP_Authorization' => 'Basic '.base64_encode($user->email.':'.$app_password),
+        ]);
+
+        $this->assertEquals(200, $this->response->status());
+        
+        $this->get('/api/token?email='.$user->email.'&password='.$app_password)
+                                      ->seeJson([
+                                          'full_permission' => false,
+                                      ]);
+        
+        $this->assertEquals(200, $this->response->status());
+
+        $token = json_decode($this->response->getContent())->token;
+        $this->seeInDatabase(User::TABLE_NAME, [
+            'email' => $user->email,
+            'app_token' => $token,
+        ]);
+
+        $this->get('/api/me?token='.$token);
 
         $this->assertEquals(200, $this->response->status());
     }
@@ -60,19 +91,24 @@ class UserTest extends TestCase
     public function testUpdate()
     {
         $user = factory(User::class)->create();
+        
         $userId = User::where('email', $user->email)->firstOrFail()->id;
 
         $newUser = factory(User::class)->make([
             'id' => $userId,
         ]);
 
-        $this->actingAs($user)->put('/api/user/'.$userId.'/info', [
-            'name' => $newUser->name,
-            'email' => $newUser->email,
-            'birthday' => $newUser->birthday,
-            'phone' => $newUser->phone,
-        ]);
-
+        //TOKEN
+        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
+        
+        $this->actingAs($user)
+            ->put('/api/user/'.$userId, [
+                'name' => $newUser->name,
+                'email' => $newUser->email,
+                'birthday' => $newUser->birthday,
+                'phone' => $newUser->phone,
+            ]);
+        
         $this->assertEquals(204, $this->response->status());
 
         $this->seeInDatabase(User::TABLE_NAME, [
@@ -82,6 +118,19 @@ class UserTest extends TestCase
             'birthday' => $newUser->birthday,
             'phone' => $newUser->phone,
         ]);
+
+        //APP_TOKEN
+        $user->current_token = dechex(time()).'.'.str_random();
+        
+        $this->actingAs($user)
+            ->put('/api/user/'.$userId, [
+                'name' => $newUser->name,
+                'email' => $newUser->email,
+                'birthday' => $newUser->birthday,
+                'phone' => $newUser->phone,
+            ]);
+        
+        $this->assertEquals(403, $this->response->status());
     }
 
     public function testNewPassword()
@@ -90,20 +139,42 @@ class UserTest extends TestCase
         $user = factory(User::class)->create([
             'password' => app('hash')->make($password),
         ]);
-        $userId = User::where('email', $user->email)->firstOrFail()->id;
+
+        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         
         $newPassword = str_random(10);
-        $this->actingAs($user)->put('/api/user/'.$userId.'/password', [
-            'current_password' => $password,
-            'new_password' => $newPassword,
-            'new_password_confirmation' => $newPassword,
-        ]);
+        $newAppPassword = str_random(10);
+
+        $this->actingAs($user)
+            ->put('/api/password', [
+                'current_password' => $password,
+                'new_password' => $newPassword,
+            ]);
 
         $this->assertEquals(204, $this->response->status());
 
         $this->get('/api/token', [
-            'HTTP_Email' => $user->email,
-            'HTTP_Password' => $newPassword,
+            'HTTP_Authorization' => 'Basic '.base64_encode($user->email.':'.$newPassword),
+        ])->seeJson([
+            'full_permission' => true,
+        ]);
+        
+        $this->assertEquals(200, $this->response->status());
+
+        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
+        
+        $this->actingAs($user)
+            ->put('/api/password', [
+                'current_password' => $newPassword,
+                'new_app_password' => $newAppPassword,
+            ]);
+
+        $this->assertEquals(204, $this->response->status());
+
+        $this->get('/api/token', [
+            'HTTP_Authorization' => 'Basic '.base64_encode($user->email.':'.$newAppPassword),
+        ])->seeJson([
+            'full_permission' => false,
         ]);
         
         $this->assertEquals(200, $this->response->status());
@@ -112,13 +183,16 @@ class UserTest extends TestCase
     public function testDelete()
     {
         $user = factory(User::class)->create();
-        $userId = User::where('email', $user->email)->firstOrFail()->id;
 
+        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();        
+        
+        $userId = User::where('email', $user->email)->firstOrFail()->id;
+        
         $this->actingAs($user)
             ->delete('/api/user/'.$userId);
         
         $this->assertEquals(204, $this->response->status());        
-                
+        
         $this->missingFromDatabase(User::TABLE_NAME, [
             'id' => $userId,
         ]);

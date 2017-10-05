@@ -4,16 +4,14 @@ namespace App\Http\Controllers;
 
 use Exception;
 use App\User;
-use App\Exceptions\IncorrectPasswordException;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 class UserController extends Controller
 {
 	public function index(Request $request)
 	{
-		$this->authorize('readList', User::class);
-
 		$pageSize = $this->getPageSize($request->input('page_size'));
 		$res = User::orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
@@ -24,8 +22,8 @@ class UserController extends Controller
 		$this->validate($request, [
             'email' => 'bail|required|email|unique:'.User::TABLE_NAME,
             'password' => 'bail|required|min:6|alpha_dash',
-            'application_password' => 'bail|min:6|alpha_dash',
-            'birthday' => 'bail|date_format:d-m-Y|before:'.date('d-m-Y'),
+            'app_password' => 'bail|min:6|alpha_dash',
+            'birthday' => 'bail|date_format:d-m-Y|before:now',
         ]);
 
 		$user = new User;
@@ -33,8 +31,8 @@ class UserController extends Controller
 		$user->name = $request->input('name');
 		$user->birthday = $request->input('birthday');
 		$user->phone = $request->input('phone');
-		$user->password = app('hash')->make($request->input('password'));
-		$user->application_password = $request->input('application_password') ? app('hash')->make($request->input('application_password')) : null;
+		$user->password = $this->createPassword($request->input('password'));
+		$user->app_password = $request->input('app_password') ? $this->createPassword($request->input('app_password')) : null;
 		$user->save();
 
 		return response(null, 201, ['Location' => '/api/user/'.$user->id]);
@@ -47,27 +45,60 @@ class UserController extends Controller
 
 	public function getToken(Request $request)
 	{		
-		$email = $request->header('email');
-		$password = $request->header('password');
+		$email = $request->input('email');
+		$password = $request->input('password');
 
         if (! $email || ! $password){
-            $email = $request->input('email');
-            $password = $request->input('password');
+            try {
+                $header = trim(substr($request->header('authorization'), strlen('Basic')+1));
+                $parts = explode(':', base64_decode($header, true));
+                $email = $parts[0];
+                $password = $parts[1];
+            }
+            catch (Exception $e){}
         }
+
+        if (! $email || ! $password) throw new UnauthorizedHttpException("Basic realm=\"Please enter your valid email and password.\"");
+
 		$user = User::where('email', $email)->firstOrFail();
 
-		$this->checkPassword($password, $user->password);
+        $expires = intval(env('TOKEN_EXPIRE', 900));
+        if ($this->checkPassword($password, $user->password)){
+            if (! $user->token || ($expires > 0 && intval(hexdec(explode('.', $user->token)[0])) < strtotime('-'.$expires.' seconds'))){
+                $user->token = dechex(time()).'.'.str_random().'.'.str_random();
+            }
+            $returnToken = $user->token;
+            $fullPermission = true;
+        }
+        elseif ($user->app_password && $this->checkPassword($password, $user->app_password)){
+            if (! $user->app_token || ($expires > 0 && intval(hexdec(explode('.', $user->app_token)[0])) < strtotime('-'.$expires.' seconds'))){
+                $user->app_token = dechex(time()).'.'.str_random();
+            }
+            $returnToken = $user->app_token;
+            $fullPermission = false;
+        }
+        else {
+            throw new UnprocessableEntityHttpException('The password is incorrect.');
+        }
 
-        $user->api_token = dechex(time()).str_random(11);
         $user->save();
 
-		return response()->json(['token' => $user->api_token]);
+		return response()->json([
+            'token' => $returnToken,
+            'full_permission' => $fullPermission,
+        ]);
 	}
 
 	public function deleteToken(Request $request)
 	{		
 		$user = $request->user();
-        $user->api_token = null;
+        $tokenDots = substr_count($user->current_token, '.');
+        if ($tokenDots > 1)
+            $user->token = null;
+
+        $user->app_token = null;
+
+        unset($user->current_token);
         $user->save();
 
 		return response(null, 204);
@@ -76,7 +107,7 @@ class UserController extends Controller
 	public function detail($id)
 	{
 		$user = User::findOrFail($id);
-		return $this->renderJson($user);
+		return response()->json($user);
 	}
 
 	public function updateInfo(Request $request, $id)
@@ -86,7 +117,7 @@ class UserController extends Controller
 
 		$this->validate($request, [
             'email' => 'bail|required|email|unique:'.User::TABLE_NAME.',email,'.$user->id,
-            'birthday' => 'bail|date_format:d-m-Y|before:'.date('d-m-Y')
+            'birthday' => 'bail|date_format:d-m-Y|before:now',
         ]);
 
 		$user->email = $request->input('email');
@@ -97,56 +128,51 @@ class UserController extends Controller
 		return response(null, 204);
 	}
 
-	public function updatePassword(Request $request, $id)
+	public function updatePassword(Request $request)
 	{        
-		$email = $request->header('email');
-		$password = $request->header('password');
-
-        if (! $email || ! $password){
-            $email = $request->input('email');
-            $password = $request->input('password');
-        }
-		$currentUser = User::where('email', $email)->firstOrFail();
-
-		$this->checkPassword($password, $currentUser->password);
-
-		$user = User::findOrFail($id);
-		$this->authorizeForUser($currentUser, 'write', $user);
+		$user = $request->user();
+		$this->authorize('write', $user);
 
 		$this->validate($request, [
-            'new_password' => 'bail|required|min:6|alpha_dash',
-            'new_application_password' => 'bail|min:6|alpha_dash',
+            'current_password' => 'bail|required',
+            'new_password' => 'bail|min:6|alpha_dash',
+            'new_app_password' => 'bail|min:6|alpha_dash',
         ]);
 
-		$user->password = app('hash')->make($request->input('new_password'));
-		$user->application_password = $request->input('application_password') ? app('hash')->make($request->input('application_password')) : null;
+        if (! $this->checkPassword($request->input('current_password'), $user->password))
+            throw new UnprocessableEntityHttpException('The current password is incorrect.');
+
+        if ($request->has('new_password')){
+            $user->password = $this->createPassword($request->input('new_password'));
+        }
+        elseif ($request->has('new_app_password')) {
+            $user->app_password = $this->createPassword($request->input('new_app_password'));
+        }
+        else {
+            $user->app_password = null;
+        }
+
+        unset($user->current_token);
 		$user->save();
 		return response(null, 204);
 	}
 
 	public function delete(Request $request, $id)
 	{
-		$email = $request->header('email');
-		$password = $request->header('password');
-
-        if (! $email || ! $password){
-            $email = $request->input('email');
-            $password = $request->input('password');
-        }
-		$currentUser = User::where('email', $email)->firstOrFail();
-
-		$this->checkPassword($password, $currentUser->password);
-
 		$user = User::findOrFail($id);
-		$this->authorizeForUser($currentUser, 'write', $user);
+		$this->authorize('write', $user);
 
 		$user->delete();
 		return response(null, 204);
 	}
 
+	private function createPassword($password)
+	{
+		return app('hash')->make($password);
+	}
+
 	private function checkPassword($inputPassword, $correctPassword)
 	{
-		if (! app('hash')->check($inputPassword, $correctPassword)) 
-			throw new IncorrectPasswordException;		
+		return app('hash')->check($inputPassword, $correctPassword);
 	}
 }

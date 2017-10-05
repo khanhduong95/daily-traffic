@@ -38,7 +38,7 @@ class Authenticate
     {
         if ($this->auth->guard($guard)->guest()) {
             /* return response('Unauthorized.', 401); */
-		throw new AuthenticationException;
+            throw new AuthenticationException;
         }
 
         return $next($request);

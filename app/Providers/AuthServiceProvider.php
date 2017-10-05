@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Exception;
 use App\User;
 use App\Place;
 use App\Traffic;
@@ -12,6 +13,7 @@ use App\Policies\TrafficPolicy;
 use App\Policies\PermissionPolicy;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Support\ServiceProvider;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -43,18 +45,33 @@ class AuthServiceProvider extends ServiceProvider
 		$gate->policy(Traffic::class, TrafficPolicy::class);
 		$gate->policy(Permission::class, PermissionPolicy::class);
 
-		app('auth')->viaRequest('api', function ($request) {
-				if ($request->header('authorization')) {
-                    try {
-                        $token = trim(substr($request->header('authorization'), strlen('Token')+1));
-                        if (strlen($token) > 0)
-                            return User::where('api_token', $token)->first();
-                    }
-                    catch (\Exception $e){}
-				}
-				if ($request->has('token')) {
-					return User::where('api_token', $request->input('token'))->first();
-				}
-			});
+		app('auth')->viaRequest('api', function ($request){
+            try {
+                $token = $request->input('token');
+                $time = null;
+                if (! $token && $request->header('authorization')){
+                    $token = trim(substr($request->header('authorization'), strlen('Bearer')+1));
+                }
+                if ($token){
+                    $time = intval(hexdec(explode('.', $token)[0]));
+                }
+            }
+            catch (Exception $e){
+                throw new UnprocessableEntityHttpException('The token is invalid.');
+            }
+            $expires = intval(env('TOKEN_EXPIRE', 900));
+            if ($time){
+                if ($expires > 0 && $time < strtotime('-'.$expires.' seconds'))
+                    throw new UnprocessableEntityHttpException('The token has been expired.');
+
+                $user = User::where('token', $token)
+                      ->orWhere('app_token', $token)
+                      ->firstOrFail();
+
+                $user->current_token = $token;
+                return $user;
+            }
+        });
 	}
+
 }

@@ -7,38 +7,100 @@ use App\User;
 use App\Place;
 use App\Traffic;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class PlaceController extends Controller
 {
-
 	public function index(Request $request)
 	{
-		$pageSize = $this->getPageSize($request->input('page_size'));
-		$res = Place::orderBy('id', 'desc')->paginate($pageSize);
-		return response()->json($res);
+		$pageSize = $this->getPageSize($request->input('per_page'));
+        if ($request->has('statistics'))
+            $query = Place::select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Traffic::TABLE_NAME.'.time) as frequency'))
+                   ->leftJoin(Traffic::TABLE_NAME, Traffic::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
+                   ->groupBy(Traffic::TABLE_NAME.'.place_id')
+                   ->orderBy('frequency', $request->input('order') == 'asc' ? 'asc' : 'desc');
+
+        else 
+            $query = Place::select(Place::TABLE_NAME.'.id', Place::TABLE_NAME.'.latitude', Place::TABLE_NAME.'.longitude')
+                   ->leftJoin(Traffic::TABLE_NAME, Traffic::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
+                   ->groupBy(Traffic::TABLE_NAME.'.place_id')
+                   ->orderBy(Place::TABLE_NAME.'.id', $request->input('order') == 'asc' ? 'asc' : 'desc');
+        
+        
+		return response()->json($query->paginate($pageSize));
 	}
 
-	public function detail($id)
+	public function indexByUser(Request $request, $id)
+	{
+        $user = User::findOrFail($id);
+
+		$pageSize = $this->getPageSize($request->input('per_page'));
+        $query = $user->places();
+        if ($request->has('statistics'))
+            $query = $query->select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Traffic::TABLE_NAME.'.time) as frequency'))
+                   ->groupBy(Traffic::TABLE_NAME.'.place_id')
+                   ->orderBy('frequency', $request->input('order') == 'asc' ? 'asc' : 'desc');
+
+        else 
+            $query = $query->groupBy(Traffic::TABLE_NAME.'.place_id')
+                   ->orderBy(Place::TABLE_NAME.'.id', $request->input('order') == 'asc' ? 'asc' : 'desc');        
+        
+		return response()->json($query->paginate($pageSize));
+	}
+
+	public function add(Request $request)
+	{
+        $this->validate($request, [
+            'latitude' => 'bail|required|numeric|between:'.(-Place::MAX_LATITUDE).','.Place::MAX_LATITUDE,
+            'longitude' => 'bail|required|numeric|between:'.(-Place::MAX_LONGITUDE).','.Place::MAX_LONGITUDE,
+        ]);
+        
+        $latitude = $request->input('latitude');
+        $longitude = $request->input('longitude');
+        $place = Place::where('latitude', $latitude)
+               ->where('longitude', $longitude)
+               ->first();
+        
+        if ($place) throw new ConflictHttpException;
+
+        $place = new Place;
+        $place->latitude = $latitude;
+        $place->longitude = $longitude;
+        $place->save();
+
+		return response(null, 201, ['Location' => $request->url().'/'.$place->id]);        
+	}
+
+	public function detail(Request $request, $id)
 	{
 		$place = Place::findOrFail($id);
 		return response()->json($place);
 	}
 
-	public function getPlacesByUser(Request $request, $id)
+	public function update(Request $request, $id)
 	{
-		$user = User::findOrFail($id);
-		$this->authorize('read', $user);
+		$place = Place::findOrFail($id);
+		$this->authorize('write', $place);
 
-		$pageSize = $this->getPageSize($request->input('page_size'));
-		return response()->json(
-            Place::select(Place::TABLE_NAME.'.id', Place::TABLE_NAME.'.latitude', Place::TABLE_NAME.'.longitude', app('db')->raw('count('.Traffic::TABLE_NAME.'.time) as frequency'))
-            ->join(Traffic::TABLE_NAME, Traffic::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
-            ->join(User::TABLE_NAME, Traffic::TABLE_NAME.'.user_id', '=', User::TABLE_NAME.'.id')
-            ->where(User::TABLE_NAME.'.id', $user->id)
-            ->groupBy(Traffic::TABLE_NAME.'.place_id')
-            ->orderBy($request->input('sort') == 'frequency' ? app('db')->raw('count('.Traffic::TABLE_NAME.'.time)') : Traffic::TABLE_NAME.'.id', $request->input('order') == 'asc' ? 'asc' : 'desc')
-            ->paginate($pageSize)
-        );
+        $this->validate($request, [
+            'latitude' => 'bail|required|numeric|between:'.(-Place::MAX_LATITUDE).','.Place::MAX_LATITUDE,
+            'longitude' => 'bail|required|numeric|between:'.(-Place::MAX_LONGITUDE).','.Place::MAX_LONGITUDE,
+        ]);
+        
+        $latitude = $request->input('latitude');
+        $longitude = $request->input('longitude');
+
+        $exist = Place::where('latitude', $latitude)
+               ->where('longitude', $longitude)
+               ->first();
+        
+        if ($exist && $exist->id != $id) throw new ConflictHttpException;
+        
+        $place->latitude = $latitude;
+        $place->longitude = $longitude;
+        $place->save();
+
+		return response(null, 204);
 	}
 
 	public function delete(Request $request, $id)

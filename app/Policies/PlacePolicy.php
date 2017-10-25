@@ -14,7 +14,7 @@ class PlacePolicy
             return false;
         
         return Permission::where([
-            'id' => $user->id,
+            'user_id' => $user->id,
             'table_name' => Place::TABLE_NAME,
             'write' => true,
         ])->first() != null;

@@ -12,7 +12,7 @@ class UserController extends Controller
 {
 	public function index(Request $request)
 	{
-		$pageSize = $this->getPageSize($request->input('page_size'));
+		$pageSize = $this->getPageSize($request->input('per_page'));
 		$res = User::orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
 	}
@@ -23,7 +23,7 @@ class UserController extends Controller
             'email' => 'bail|required|email|unique:'.User::TABLE_NAME,
             'password' => 'bail|required|min:6|alpha_dash',
             'app_password' => 'bail|min:6|alpha_dash',
-            'birthday' => 'bail|date_format:d-m-Y|before:now',
+            'birthday' => 'bail|date_format:Y-m-d|before:now',
         ]);
 
 		$user = new User;
@@ -35,12 +35,7 @@ class UserController extends Controller
 		$user->app_password = $request->input('app_password') ? $this->createPassword($request->input('app_password')) : null;
 		$user->save();
 
-		return response(null, 201, ['Location' => '/api/user/'.$user->id]);
-	}
-
-	public function current(Request $request)
-	{
-		return response()->json($request->user());
+		return response(null, 201, ['Location' => $request->url().'/'.$user->id]);
 	}
 
 	public function getToken(Request $request)
@@ -86,6 +81,9 @@ class UserController extends Controller
 		return response()->json([
             'token' => $returnToken,
             'full_permission' => $fullPermission,
+            '_links' => [
+                'user' => route(User::TABLE_NAME.'.detail', ['id' => $user->id]),
+            ],
         ]);
 	}
 
@@ -104,7 +102,7 @@ class UserController extends Controller
 		return response(null, 204);
 	}
 
-	public function detail($id)
+	public function detail(Request $request, $id)
 	{
 		$user = User::findOrFail($id);
 		return response()->json($user);
@@ -117,7 +115,7 @@ class UserController extends Controller
 
 		$this->validate($request, [
             'email' => 'bail|required|email|unique:'.User::TABLE_NAME.',email,'.$user->id,
-            'birthday' => 'bail|date_format:d-m-Y|before:now',
+            'birthday' => 'bail|date_format:Y-m-d|before:now',
         ]);
 
 		$user->email = $request->input('email');

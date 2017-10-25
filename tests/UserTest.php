@@ -1,6 +1,7 @@
 <?php
 
 use App\User;
+use App\Permission;
 use Laravel\Lumen\Testing\DatabaseMigrations;
 use Laravel\Lumen\Testing\DatabaseTransactions;
 
@@ -18,7 +19,7 @@ class UserTest extends TestCase
         $password = str_random(10);
         $user = factory(User::class)->make();
 
-        $this->post('/api/user', [
+        $this->post('/api/users', [
             'email' => $user->email,
             'password' => $password,
         ]);
@@ -59,10 +60,6 @@ class UserTest extends TestCase
             'token' => $token,
         ]);
 
-        $this->get('/api/me?token='.$token);
-
-        $this->assertEquals(200, $this->response->status());
-
         //APP_PASSWORD
         $this->get('/api/token', [
             'HTTP_Authorization' => 'Basic '.base64_encode($user->email.':'.$app_password),
@@ -82,10 +79,6 @@ class UserTest extends TestCase
             'email' => $user->email,
             'app_token' => $token,
         ]);
-
-        $this->get('/api/me?token='.$token);
-
-        $this->assertEquals(200, $this->response->status());
     }
  
     public function testUpdate()
@@ -102,7 +95,7 @@ class UserTest extends TestCase
         $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         
         $this->actingAs($user)
-            ->put('/api/user/'.$userId, [
+            ->put('/api/users/'.$userId, [
                 'name' => $newUser->name,
                 'email' => $newUser->email,
                 'birthday' => $newUser->birthday,
@@ -123,12 +116,67 @@ class UserTest extends TestCase
         $user->current_token = dechex(time()).'.'.str_random();
         
         $this->actingAs($user)
-            ->put('/api/user/'.$userId, [
+            ->put('/api/users/'.$userId);
+        
+        $this->assertEquals(403, $this->response->status());
+    }
+
+    public function testUpdateAsAdmin()
+    {
+        $admin = factory(User::class)->create();
+        $user = factory(User::class)->create();
+        
+        $adminId = User::where('email', $admin->email)->firstOrFail()->id;
+        $userId = User::where('email', $user->email)->firstOrFail()->id;
+
+        $newUser = factory(User::class)->make([
+            'id' => $userId,
+        ]);
+
+        Permission::insert([
+            'table_name' => User::TABLE_NAME,
+            'user_id' => $adminId,
+            'write' => true,
+        ]);
+        
+        //TOKEN
+        $admin->current_token = dechex(time()).'.'.str_random().'.'.str_random();
+        
+        $this->actingAs($admin)
+            ->put('/api/users/'.$userId, [
                 'name' => $newUser->name,
                 'email' => $newUser->email,
                 'birthday' => $newUser->birthday,
                 'phone' => $newUser->phone,
             ]);
+        
+        $this->assertEquals(204, $this->response->status());
+
+        $this->seeInDatabase(User::TABLE_NAME, [
+            'id' => $userId,
+            'name' => $newUser->name,
+            'email' => $newUser->email,
+            'birthday' => $newUser->birthday,
+            'phone' => $newUser->phone,
+        ]);
+
+        //APP_TOKEN
+        $admin->current_token = dechex(time()).'.'.str_random();
+        
+        $this->actingAs($admin)
+            ->put('/api/users/'.$userId);
+        
+        $this->assertEquals(403, $this->response->status());
+
+        Permission::where('table_name', User::TABLE_NAME)
+            ->where('user_id', $adminId)
+            ->delete();      
+
+        //APP_TOKEN
+        $admin->current_token = dechex(time()).'.'.str_random().'.'.str_random();
+        
+        $this->actingAs($admin)
+            ->put('/api/users/'.$userId);
         
         $this->assertEquals(403, $this->response->status());
     }
@@ -189,7 +237,7 @@ class UserTest extends TestCase
         $userId = User::where('email', $user->email)->firstOrFail()->id;
         
         $this->actingAs($user)
-            ->delete('/api/user/'.$userId);
+            ->delete('/api/users/'.$userId);
         
         $this->assertEquals(204, $this->response->status());        
         

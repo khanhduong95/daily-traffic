@@ -13,18 +13,20 @@ class PermissionTableSeeder extends Seeder
      */
     public function run()
     {
-        $admin = User::where('email', 'admin@example.com')->first();
-        if ($admin) {
-            $adminId = $admin->id;
-            $toInsertPermission = [];
-            foreach (Permission::$models as $mk){
-                $toInsertPermission[] = [
-                    'table_name' => $mk::TABLE_NAME,
-                    'write' => true,
-                    'user_id' => $adminId
-                ];
+        if (! Permission::first()){
+            $admin = User::where('email', 'admin@example.com')->first();
+            if ($admin) {
+                $adminId = $admin->id;
+                $toInsertPermission = [];
+                foreach (Permission::$models as $mk){
+                    $toInsertPermission[] = [
+                        'table_name' => $mk::TABLE_NAME,
+                        'write' => true,
+                        'user_id' => $adminId
+                    ];
+                }
+                Permission::insert($toInsertPermission);
             }
-            Permission::insert($toInsertPermission);
         }
     }
 }

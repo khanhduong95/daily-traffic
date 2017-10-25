@@ -13,10 +13,16 @@ class UserTableSeeder extends Seeder
      */
     public function run()
     {
-        User::insert([
-            'name' => 'Administrator',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('123456'),
-        ]);
+        if (! User::first()){
+            User::insert([
+                'name' => 'Administrator',
+                'email' => 'admin@example.com',
+                'password' => Hash::make('123456'),
+            ]);
+            for ($i = 0; $i < 10; $i++)
+                factory(User::class)->create([
+                    'password' => app('hash')->make('123456'.$i),
+                ]);
+        }
     }
 }

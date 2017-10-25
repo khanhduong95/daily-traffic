@@ -14,7 +14,7 @@ class TrafficPolicy
             return false;
 
 		return Permission::where([
-            'id' => $user->id,
+            'user_id' => $user->id,
             'table_name' => Traffic::TABLE_NAME,
         ])->first() != null;		
 	}
@@ -28,7 +28,7 @@ class TrafficPolicy
             return false;
 
 		return Permission::where([
-            'id' => $user->id,
+            'user_id' => $user->id,
             'table_name' => Traffic::TABLE_NAME,
         ])->first() != null;
 	}
@@ -42,7 +42,7 @@ class TrafficPolicy
             return false;
 
 		return Permission::where([
-            'id' => $user->id,
+            'user_id' => $user->id,
             'table_name' => Traffic::TABLE_NAME,
             'write' => true,
         ])->first() != null;

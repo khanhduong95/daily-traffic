@@ -26,6 +26,8 @@ class User extends Model implements
         'name', 'email',
     ];
 
+    protected $appends = ['_links'];
+
     /**
      * The attributes excluded from the model's JSON form.
      *
@@ -34,4 +36,33 @@ class User extends Model implements
     protected $hidden = [
         'password', 'app_password', 'token', 'app_token', 'current_token', 'remember_token', 'created_at', 'updated_at',
     ];
+
+    public function permissions()
+    {
+        return $this->hasMany(Permission::class);
+    }
+
+    public function places()
+    {
+        return $this->belongsToMany(Place::class, Traffic::TABLE_NAME);
+    }
+
+    public function getLinksAttribute()
+    {
+        $request = app('request');
+        if ($request->has('previous_path'))
+            $currentUrl = url($request->input('previous_path'));
+        else
+            $currentUrl = $request->url();
+
+        $idPath = '/'.$this->id;
+        if (! ends_with($currentUrl, $idPath))
+            $currentUrl .= $idPath;
+
+        return [
+            'self' => $currentUrl,
+            Place::TABLE_NAME => $currentUrl.'/'.Place::TABLE_NAME,
+            Permission::TABLE_NAME => $currentUrl.'/'.Permission::TABLE_NAME,
+        ];
+    }
 }

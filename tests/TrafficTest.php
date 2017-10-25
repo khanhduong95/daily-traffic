@@ -19,45 +19,36 @@ class TrafficTest extends TestCase
     {
         $user = factory(User::class)->create();
         $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
+        $userId = User::where('email', $user->email)->firstOrFail()->id;
         
-        $place = factory(Place::class)->make();
+        $place = factory(Place::class)->create();
+        $placeId = Place::where('latitude', $place->latitude)
+                 ->where('longitude', $place->longitude)
+                 ->firstOrFail()->id;        
         
         $date = date('Y-m-d');
-        $time = date('H').':00';
-
-        $userId = User::where('email', $user->email)->firstOrFail()->id;
+        $hour = date('H');
+        $minute = '00';
 
         $this->actingAs($user)
-            ->post('/api/user/'.$userId.'/traffic', [
-                'latitude' => $place->latitude,
-                'longitude' => $place->longitude,
+            ->post('/api/users/'.$userId.'/places/'.$placeId.'/traffic', [
                 'dates' => [$date],
-                'time' => $time,
+                'hour' => $hour,
+                'minute' => $minute,
             ]);
 
         $this->assertEquals(201, $this->response->status());
 
-        $this->seeInDatabase(Place::TABLE_NAME, [
-            'latitude' => $place->latitude,
-            'longitude' => $place->longitude,
-        ]);
-
-        $placeId = Place::where([
-            ['latitude', $place->latitude],
-            ['longitude', $place->longitude],
-        ])->firstOrFail()->id;
-
         $this->seeInDatabase(Traffic::TABLE_NAME, [
             'user_id' => $userId,
             'place_id' => $placeId,
-            'time' => $date.' '.$time.':00',
+            'time' => $date.' '.$hour.':'.$minute.':00',
         ]);
 
-        $trafficId = Traffic::where([
-            ['user_id', $userId],
-            ['place_id', $placeId],
-            ['time', $date.' '.$time.':00'],
-        ])->firstOrFail()->id;
+        $trafficId = Traffic::where('user_id', $userId)
+                   ->where('place_id', $placeId)
+                   ->where('time', $date.' '.$hour.':'.$minute.':00')
+                   ->firstOrFail()->id;
         
         $this->actingAs($user)
             ->get('/api/traffic/'.$trafficId);
@@ -69,38 +60,22 @@ class TrafficTest extends TestCase
     {
         $user = factory(User::class)->create();
         $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
-
-        $place = factory(Place::class)->create();
-        
         $userId = User::where('email', $user->email)->firstOrFail()->id;
 
-        $placeId = Place::where([
-            ['latitude', $place->latitude],
-            ['longitude', $place->longitude],
-        ])->firstOrFail()->id;
+        $place = factory(Place::class)->create();                
+        $placeId = Place::where('latitude', $place->latitude)
+                 ->where('longitude', $place->longitude)
+                 ->firstOrFail()->id;
 
-        $date = date('Y-m-d');
-        $time = date('H').':00';
-
-        $this->actingAs($user)
-            ->post('/api/user/'.$userId.'/place/'.$placeId.'/traffic', [
-                'dates' => [$date],
-                'time' => $time,
-            ]);
-
-        $this->assertEquals(201, $this->response->status());
-
-        $this->seeInDatabase(Traffic::TABLE_NAME, [
+        $traffic = factory(Traffic::class)->create([
             'user_id' => $userId,
             'place_id' => $placeId,
-            'time' => $date.' '.$time.':00',
         ]);
 
-        $trafficId = Traffic::where([
-            ['user_id', $userId],
-            ['place_id', $placeId],
-            ['time', $date.' '.$time.':00'],
-        ])->firstOrFail()->id;
+        $trafficId = Traffic::where('user_id', $userId)
+                   ->where('place_id', $placeId)
+                   ->where('time', $traffic->time)
+                   ->firstOrFail()->id;
 
         $this->actingAs($user)
             ->delete('/api/traffic/'.$trafficId);
@@ -116,12 +91,17 @@ class TrafficTest extends TestCase
     {
         $user = factory(User::class)->create();
         $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
+        $userId = User::where('email', $user->email)->firstOrFail()->id;
 
-        $place = factory(Place::class)->make();
+        $place = factory(Place::class)->create();
+        $placeId = Place::where('latitude', $place->latitude)
+                 ->where('longitude', $place->longitude)
+                 ->firstOrFail()->id;
         
         $month = date('Y-m');
 
-        $time = date('H').':00';
+        $hour = date('H');
+        $minute = '00';
         
         $dates = [];
         for ($i = 1; $i < 32; $i++){
@@ -130,14 +110,11 @@ class TrafficTest extends TestCase
             $dates[] = $dk;
         }
         
-        $userId = User::where('email', $user->email)->firstOrFail()->id;
-
         $this->actingAs($user)
-            ->post('/api/user/'.$userId.'/traffic', [
-                'latitude' => $place->latitude,
-                'longitude' => $place->longitude,
+            ->post('/api/users/'.$userId.'/places/'.$placeId.'/traffic', [
                 'dates' => $dates,
-                'time' => $time,
+                'hour' => $hour,
+                'minute' => $minute,
             ]);
 
         $this->assertEquals(201, $this->response->status());
@@ -146,11 +123,6 @@ class TrafficTest extends TestCase
             'latitude' => $place->latitude,
             'longitude' => $place->longitude,
         ]);
-
-        $placeId = Place::where([
-            ['latitude', $place->latitude],
-            ['longitude', $place->longitude],
-        ])->firstOrFail()->id;
 
         $this->assertEquals(count($dates), Traffic::where([
             'user_id' => $userId,
@@ -162,44 +134,26 @@ class TrafficTest extends TestCase
     {
         $user = factory(User::class)->create();
         $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
-
-        $place = factory(Place::class)->create();
-        
         $userId = User::where('email', $user->email)->firstOrFail()->id;
 
-        $placeId = Place::where([
-            ['latitude', $place->latitude],
-            ['longitude', $place->longitude],
-        ])->firstOrFail()->id;
+        $place = factory(Place::class)->create();
 
-        $month = date('Y-m');
+        $placeId = Place::where('latitude', $place->latitude)
+                 ->where('longitude', $place->longitude)
+                 ->firstOrFail()->id;
 
-        $time = date('H').':00';
-        
         $dates = [];
-        for ($i = 1; $i < 32; $i++){
-            $dk = $month.'-'.$i;
-            if (date_parse_from_format('Y-m-d', $dk)['warning_count'] > 0) continue;
-            $dates[] = $dk;
-        }
-
-        $this->actingAs($user)
-            ->post('/api/user/'.$userId.'/place/'.$placeId.'/traffic', [
-                'dates' => $dates,
-                'time' => $time,
+        for ($i = 0; $i < 31; $i++){
+            $traffic = factory(Traffic::class)->create([
+                'user_id' => $userId,
+                'place_id' => $placeId,                
             ]);
-
-        $this->assertEquals(201, $this->response->status());
-
-        $this->assertEquals(count($dates), Traffic::where([
-            'user_id' => $userId,
-            'place_id' => $placeId,
-        ])->count());                
+            $dates[] = $traffic->time;
+        }        
 
         $this->actingAs($user)
-            ->delete('/api/user/'.$userId.'/place/'.$placeId.'/traffic', [
+            ->delete('/api/users/'.$userId.'/places/'.$placeId.'/traffic', [
                 'dates' => $dates,
-                'time' => $time,
             ]);
 
         $this->assertEquals(204, $this->response->status());

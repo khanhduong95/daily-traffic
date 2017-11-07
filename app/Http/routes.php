@@ -35,7 +35,7 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/users', 'mi
     $app->delete('{user_id}/places/{place_id}/traffic', 'TrafficController@deleteByPlaceAndUser');
 
     //Permission
-    $app->get('{id}/permissions', 'PermissionController@index');
+    $app->get('{id}/permissions', 'PermissionController@indexByUser');
     $app->post('{id}/permissions', 'PermissionController@addByUser');
 });
 

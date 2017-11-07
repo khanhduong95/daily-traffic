@@ -13,7 +13,7 @@ class PlaceTableSeeder extends Seeder
     public function run()
     {
         if (! Place::first()){
-            for ($i = 0; $i < 10; $i++)
+            for ($i = 0; $i < 20; $i++)
                 factory(Place::class)->create();
         }
     }

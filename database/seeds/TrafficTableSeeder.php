@@ -19,7 +19,7 @@ class TrafficTableSeeder extends Seeder
             $places = Place::get();
             $numUsers = count($users);
             $numPlaces = count($places);
-            for ($i = 0; $i < 50; $i++)
+            for ($i = 0; $i < 100; $i++)
                 factory(Traffic::class)->create([
                     'user_id' => $users[random_int(0, $numUsers - 1)]->id,
                     'place_id' => $places[random_int(0, $numPlaces - 1)]->id,

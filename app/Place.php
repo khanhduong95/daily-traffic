@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Place extends Model
 {
-
     const TABLE_NAME = 'places';
 
 	const MAX_LATITUDE = 90;
@@ -18,9 +17,9 @@ class Place extends Model
 
     protected $appends = ['_links'];
 
-    public function traffic()
+    public function visit()
     {
-        return $this->hasMany(Traffic::class);
+        return $this->hasMany(Visit::class);
     }
 
     public function getLinksAttribute()
@@ -37,7 +36,7 @@ class Place extends Model
 
         return [
             'self' => $currentUrl,
-            Traffic::TABLE_NAME => $currentUrl.'/'.Traffic::TABLE_NAME,
+            Visit::TABLE_NAME => $currentUrl.'/'.Visit::TABLE_NAME,
         ];
     }
 }

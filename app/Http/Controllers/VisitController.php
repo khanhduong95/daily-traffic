@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use Exception;
 use App\User;
 use App\Place;
-use App\Traffic;
+use App\Visit;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Illuminate\Http\Request;
 
-class TrafficController extends Controller
+class VisitController extends Controller
 {
 	private $minutes = [];
 
@@ -23,23 +23,23 @@ class TrafficController extends Controller
 
 	public function index(Request $request)
 	{		
-		$this->authorize('readList', Traffic::class);
+		$this->authorize('readList', Visit::class);
 
 		$pageSize = $this->getPageSize($request->input('per_page'));
 
-		$res = Traffic::orderBy('id', 'desc')->paginate($pageSize);
+		$res = Visit::orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
 	}
 
 	public function indexByPlace(Request $request, $place_id)
 	{		
-		$this->authorize('readList', Traffic::class);
+		$this->authorize('readList', Visit::class);
 
 		$place = Place::findOrFail($place_id);
 
 		$pageSize = $this->getPageSize($request->input('per_page'));
 
-		$res = $place->traffic()->orderBy('id', 'desc')->paginate($pageSize);
+		$res = $place->visit()->orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
 	}
 
@@ -52,7 +52,7 @@ class TrafficController extends Controller
 
 		$pageSize = $this->getPageSize($request->input('per_page'));
 
-		$res = $place->traffic()->where('user_id', $user_id)->orderBy('id', 'desc')->paginate($pageSize);
+		$res = $place->visit()->where('user_id', $user_id)->orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
 	}
 
@@ -72,14 +72,14 @@ class TrafficController extends Controller
 
         $time = $request->input('hour').':'.$request->input('minute').':00';
 
-		$existTraffic = Traffic::select('time')
+		$existVisit = Visit::select('time')
                       ->where([
                           'user_id' => $user_id,
                           'place_id' => $place_id,
                       ])->get();
 
 		$existTimes = [];
-		foreach ($existTraffic as $tk){
+		foreach ($existVisit as $tk){
             $existTime = $tk->time;
 			$existTimes[] = date_create_from_format('Y-m-d H:i:s', $existTime)->getTimestamp();
 		}
@@ -97,25 +97,25 @@ class TrafficController extends Controller
 		}
         if (empty($toInsert)) throw new ConflictHttpException;
 
-		Traffic::insert($toInsert);
+		Visit::insert($toInsert);
 
 		return response(null, 201, ['Location' => $request->url()]);
 	}
 
 	public function detail(Request $request, $id)
 	{
-		$traffic = Traffic::findOrFail($id);
-        $this->authorize('read', $traffic);
+		$visit = Visit::findOrFail($id);
+        $this->authorize('read', $visit);
         
-		return response()->json($traffic);
+		return response()->json($visit);
 	}
 
 	public function delete(Request $request, $id)
 	{
-		$traffic = Traffic::findOrFail($id);
-		$this->authorize('write', $traffic);
+		$visit = Visit::findOrFail($id);
+		$this->authorize('write', $visit);
 
-		$traffic->delete();
+		$visit->delete();
 		return response(null, 204);
 	}
 
@@ -131,12 +131,12 @@ class TrafficController extends Controller
 		
         $dates = $request->input('dates');
 
-        Traffic::where([
+        Visit::where([
             'user_id' => $user_id,
             'place_id' => $place_id,
         ])->whereIn('time', $dates)->firstOrFail();
 
-        Traffic::where([
+        Visit::where([
             'user_id' => $user_id,
             'place_id' => $place_id,
         ])->whereIn('time', $dates)->delete();

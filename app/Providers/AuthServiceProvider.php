@@ -5,11 +5,11 @@ namespace App\Providers;
 use Exception;
 use App\User;
 use App\Place;
-use App\Traffic;
+use App\Visit;
 use App\Permission;
 use App\Policies\UserPolicy;
 use App\Policies\PlacePolicy;
-use App\Policies\TrafficPolicy;
+use App\Policies\VisitPolicy;
 use App\Policies\PermissionPolicy;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -42,7 +42,7 @@ class AuthServiceProvider extends ServiceProvider
         $gate = app(Gate::class);
 		$gate->policy(User::class, UserPolicy::class);
 		$gate->policy(Place::class, PlacePolicy::class);
-		$gate->policy(Traffic::class, TrafficPolicy::class);
+		$gate->policy(Visit::class, VisitPolicy::class);
 		$gate->policy(Permission::class, PermissionPolicy::class);
 
 		app('auth')->viaRequest('api', function ($request){

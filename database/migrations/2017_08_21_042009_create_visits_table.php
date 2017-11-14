@@ -3,7 +3,7 @@
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateTrafficTable extends Migration
+class CreateVisitsTable extends Migration
 {
 	/**
 	 * Run the migrations.
@@ -12,7 +12,7 @@ class CreateTrafficTable extends Migration
 	 */
 	public function up()
 	{
-		Schema::create('traffic', function (Blueprint $table) {
+		Schema::create('visits', function (Blueprint $table) {
 				$table->bigIncrements('id');
 
 				$table->dateTime('time');
@@ -48,6 +48,6 @@ class CreateTrafficTable extends Migration
 	 */
 	public function down()
 	{
-		Schema::dropIfExists('traffic');
+		Schema::dropIfExists('visits');
 	}
 }

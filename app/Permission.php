@@ -10,7 +10,7 @@ class Permission extends Model
 	static $models = [
 		   User::class,
 		   Place::class,
-		   Traffic::class,
+		   Visit::class,
 		   Permission::class,
 		   ];
 

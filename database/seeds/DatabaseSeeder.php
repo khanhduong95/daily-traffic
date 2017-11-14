@@ -14,6 +14,6 @@ class DatabaseSeeder extends Seeder
         $this->call('UserTableSeeder');
         $this->call('PermissionTableSeeder');
         $this->call('PlaceTableSeeder');
-        $this->call('TrafficTableSeeder');
+        $this->call('VisitTableSeeder');
     }
 }

@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\User;
-use App\Traffic;
+use App\Visit;
 use App\Permission;
 
-class TrafficPolicy
+class VisitPolicy
 {
 	public function readList(User $user)
 	{
@@ -15,13 +15,13 @@ class TrafficPolicy
 
 		return Permission::where([
             'user_id' => $user->id,
-            'table_name' => Traffic::TABLE_NAME,
+            'table_name' => Visit::TABLE_NAME,
         ])->first() != null;		
 	}
 
-	public function read(User $user, Traffic $traffic)
+	public function read(User $user, Visit $visit)
 	{
-		if ($user->id == $traffic->user_id)
+		if ($user->id == $visit->user_id)
 			return true;
 	    
         if (substr_count($user->current_token, '.') < 2)
@@ -29,13 +29,13 @@ class TrafficPolicy
 
 		return Permission::where([
             'user_id' => $user->id,
-            'table_name' => Traffic::TABLE_NAME,
+            'table_name' => Visit::TABLE_NAME,
         ])->first() != null;
 	}
 
-	public function write(User $user, Traffic $traffic)
+	public function write(User $user, Visit $visit)
 	{
-		if ($user->id == $traffic->user_id)
+		if ($user->id == $visit->user_id)
 			return true;
 	    
         if (substr_count($user->current_token, '.') < 2)
@@ -43,7 +43,7 @@ class TrafficPolicy
 
 		return Permission::where([
             'user_id' => $user->id,
-            'table_name' => Traffic::TABLE_NAME,
+            'table_name' => Visit::TABLE_NAME,
             'write' => true,
         ])->first() != null;
 	}

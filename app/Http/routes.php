@@ -29,10 +29,10 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/users', 'mi
     //Place
     $app->get('{id}/places', 'PlaceController@indexByUser');
 
-    //Traffic
-    $app->get('{user_id}/places/{place_id}/traffic', 'TrafficController@indexByPlaceAndUser');
-    $app->post('{user_id}/places/{place_id}/traffic', 'TrafficController@add');
-    $app->delete('{user_id}/places/{place_id}/traffic', 'TrafficController@deleteByPlaceAndUser');
+    //Visit
+    $app->get('{user_id}/places/{place_id}/visits', 'VisitController@indexByPlaceAndUser');
+    $app->post('{user_id}/places/{place_id}/visits', 'VisitController@add');
+    $app->delete('{user_id}/places/{place_id}/visits', 'VisitController@deleteByPlaceAndUser');
 
     //Permission
     $app->get('{id}/permissions', 'PermissionController@indexByUser');
@@ -46,11 +46,11 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/places', 'm
     $app->delete('{id}', 'PlaceController@delete');
 });
 
-$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/traffic', 'middleware' => 'auth'], function () use ($app) {
-    //Traffic
-    $app->get('', 'TrafficController@index');
-    $app->get('{id}', ['as' => 'traffic.detail', 'uses' => 'TrafficController@detail']);
-    $app->delete('{id}', 'TrafficController@delete');
+$app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/visits', 'middleware' => 'auth'], function () use ($app) {
+    //Visit
+    $app->get('', 'VisitController@index');
+    $app->get('{id}', ['as' => 'visit.detail', 'uses' => 'VisitController@detail']);
+    $app->delete('{id}', 'VisitController@delete');
 });
 
 $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/permissions', 'middleware' => 'auth'], function () use ($app) {
@@ -78,8 +78,8 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/users'], fu
     $app->get('{user_id}/places/{place_id}', function($userId, $placeId) use ($app){
         return redirect(route('places.detail', ['id' => $placeId]).'?previous_path='.$app['request']->path());
     });
-    $app->get('{user_id}/places/{place_id}/traffic/{traffic_id}', function($userId, $placeId, $trafficId) use ($app){
-        return redirect(route('traffic.detail', ['id' => $trafficId]).'?previous_path='.$app['request']->path().'&'.$app['request']->getQueryString());
+    $app->get('{user_id}/places/{place_id}/visits/{visit_id}', function($userId, $placeId, $visitId) use ($app){
+        return redirect(route('visit.detail', ['id' => $visitId]).'?previous_path='.$app['request']->path().'&'.$app['request']->getQueryString());
     });
 });
 
@@ -87,7 +87,7 @@ $app->group(['namespace' => 'App\Http\Controllers', 'prefix' => 'api/places'], f
     //Place
     $app->get('', 'PlaceController@index');
     $app->get('{id}', ['as' => 'places.detail', 'uses' => 'PlaceController@detail']);
-    $app->get('{place_id}/traffic/{traffic_id}', function($placeId, $trafficId) use ($app){
-        return redirect(route('traffic.detail', ['id' => $trafficId]).'?previous_path='.$app['request']->path().'&'.$app['request']->getQueryString());
+    $app->get('{place_id}/visits/{visit_id}', function($placeId, $visitId) use ($app){
+        return redirect(route('visit.detail', ['id' => $visitId]).'?previous_path='.$app['request']->path().'&'.$app['request']->getQueryString());
     });
 });

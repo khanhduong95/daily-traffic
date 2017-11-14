@@ -2,11 +2,11 @@
 
 use App\User;
 use App\Place;
-use App\Traffic;
+use App\Visit;
 use Laravel\Lumen\Testing\DatabaseMigrations;
 use Laravel\Lumen\Testing\DatabaseTransactions;
 
-class TrafficTest extends TestCase
+class VisitTest extends TestCase
 {
     use DatabaseMigrations;
     /**
@@ -31,7 +31,7 @@ class TrafficTest extends TestCase
         $minute = '00';
 
         $this->actingAs($user)
-            ->post('/api/users/'.$userId.'/places/'.$placeId.'/traffic', [
+            ->post('/api/users/'.$userId.'/places/'.$placeId.'/visits', [
                 'dates' => [$date],
                 'hour' => $hour,
                 'minute' => $minute,
@@ -39,19 +39,19 @@ class TrafficTest extends TestCase
 
         $this->assertEquals(201, $this->response->status());
 
-        $this->seeInDatabase(Traffic::TABLE_NAME, [
+        $this->seeInDatabase(Visit::TABLE_NAME, [
             'user_id' => $userId,
             'place_id' => $placeId,
             'time' => $date.' '.$hour.':'.$minute.':00',
         ]);
 
-        $trafficId = Traffic::where('user_id', $userId)
+        $visitId = Visit::where('user_id', $userId)
                    ->where('place_id', $placeId)
                    ->where('time', $date.' '.$hour.':'.$minute.':00')
                    ->firstOrFail()->id;
         
         $this->actingAs($user)
-            ->get('/api/traffic/'.$trafficId);
+            ->get('/api/visits/'.$visitId);
         
         $this->assertEquals(200, $this->response->status());
     }
@@ -67,23 +67,23 @@ class TrafficTest extends TestCase
                  ->where('longitude', $place->longitude)
                  ->firstOrFail()->id;
 
-        $traffic = factory(Traffic::class)->create([
+        $visit = factory(Visit::class)->create([
             'user_id' => $userId,
             'place_id' => $placeId,
         ]);
 
-        $trafficId = Traffic::where('user_id', $userId)
+        $visitId = Visit::where('user_id', $userId)
                    ->where('place_id', $placeId)
-                   ->where('time', $traffic->time)
+                   ->where('time', $visit->time)
                    ->firstOrFail()->id;
 
         $this->actingAs($user)
-            ->delete('/api/traffic/'.$trafficId);
+            ->delete('/api/visits/'.$visitId);
 
         $this->assertEquals(204, $this->response->status());
 
-        $this->missingFromDatabase(Traffic::TABLE_NAME, [
-            'id' => $trafficId,
+        $this->missingFromDatabase(Visit::TABLE_NAME, [
+            'id' => $visitId,
         ]);
     }
 
@@ -111,7 +111,7 @@ class TrafficTest extends TestCase
         }
         
         $this->actingAs($user)
-            ->post('/api/users/'.$userId.'/places/'.$placeId.'/traffic', [
+            ->post('/api/users/'.$userId.'/places/'.$placeId.'/visits', [
                 'dates' => $dates,
                 'hour' => $hour,
                 'minute' => $minute,
@@ -124,7 +124,7 @@ class TrafficTest extends TestCase
             'longitude' => $place->longitude,
         ]);
 
-        $this->assertEquals(count($dates), Traffic::where([
+        $this->assertEquals(count($dates), Visit::where([
             'user_id' => $userId,
             'place_id' => $placeId,
         ])->count());                
@@ -144,21 +144,21 @@ class TrafficTest extends TestCase
 
         $dates = [];
         for ($i = 0; $i < 31; $i++){
-            $traffic = factory(Traffic::class)->create([
+            $visit = factory(Visit::class)->create([
                 'user_id' => $userId,
                 'place_id' => $placeId,                
             ]);
-            $dates[] = $traffic->time;
+            $dates[] = $visit->time;
         }        
 
         $this->actingAs($user)
-            ->delete('/api/users/'.$userId.'/places/'.$placeId.'/traffic', [
+            ->delete('/api/users/'.$userId.'/places/'.$placeId.'/visits', [
                 'dates' => $dates,
             ]);
 
         $this->assertEquals(204, $this->response->status());
         
-        $this->missingFromDatabase(Traffic::TABLE_NAME, [
+        $this->missingFromDatabase(Visit::TABLE_NAME, [
             'user_id' => $userId,
             'place_id' => $placeId,
         ]);

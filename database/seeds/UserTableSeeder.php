@@ -19,7 +19,7 @@ class UserTableSeeder extends Seeder
                 'email' => 'admin@example.com',
                 'password' => Hash::make('123456'),
             ]);
-            for ($i = 0; $i < 20; $i++)
+            for ($i = 0; $i < 1000; $i++)
                 factory(User::class)->create([
                     'password' => app('hash')->make('123456'.$i),
                 ]);

@@ -44,7 +44,7 @@ class User extends Model implements
 
     public function places()
     {
-        return $this->belongsToMany(Place::class, Traffic::TABLE_NAME);
+        return $this->belongsToMany(Place::class, Visit::TABLE_NAME);
     }
 
     public function getLinksAttribute()

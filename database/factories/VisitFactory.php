@@ -11,7 +11,7 @@
   |
 */
 
-$factory->define(App\Traffic::class, function ($faker) {
+$factory->define(App\Visit::class, function ($faker) {
     return [        
         'time' => $faker->date.' '.$faker->time,
     ];

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Exception;
 use App\User;
 use App\Place;
-use App\Traffic;
+use App\Visit;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -15,15 +15,15 @@ class PlaceController extends Controller
 	{
 		$pageSize = $this->getPageSize($request->input('per_page'));
         if ($request->has('statistics'))
-            $query = Place::select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Traffic::TABLE_NAME.'.time) as frequency'))
-                   ->leftJoin(Traffic::TABLE_NAME, Traffic::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
-                   ->groupBy(Traffic::TABLE_NAME.'.place_id')
+            $query = Place::select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Visit::TABLE_NAME.'.time) as frequency'))
+                   ->leftJoin(Visit::TABLE_NAME, Visit::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
+                   ->groupBy(Visit::TABLE_NAME.'.place_id')
                    ->orderBy('frequency', $request->input('order') == 'asc' ? 'asc' : 'desc');
 
         else 
             $query = Place::select(Place::TABLE_NAME.'.id', Place::TABLE_NAME.'.latitude', Place::TABLE_NAME.'.longitude')
-                   ->leftJoin(Traffic::TABLE_NAME, Traffic::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
-                   ->groupBy(Traffic::TABLE_NAME.'.place_id')
+                   ->leftJoin(Visit::TABLE_NAME, Visit::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
+                   ->groupBy(Visit::TABLE_NAME.'.place_id')
                    ->orderBy(Place::TABLE_NAME.'.id', $request->input('order') == 'asc' ? 'asc' : 'desc');
         
         
@@ -37,12 +37,12 @@ class PlaceController extends Controller
 		$pageSize = $this->getPageSize($request->input('per_page'));
         $query = $user->places();
         if ($request->has('statistics'))
-            $query = $query->select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Traffic::TABLE_NAME.'.time) as frequency'))
-                   ->groupBy(Traffic::TABLE_NAME.'.place_id')
+            $query = $query->select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Visit::TABLE_NAME.'.time) as frequency'))
+                   ->groupBy(Visit::TABLE_NAME.'.place_id')
                    ->orderBy('frequency', $request->input('order') == 'asc' ? 'asc' : 'desc');
 
         else 
-            $query = $query->groupBy(Traffic::TABLE_NAME.'.place_id')
+            $query = $query->groupBy(Visit::TABLE_NAME.'.place_id')
                    ->orderBy(Place::TABLE_NAME.'.id', $request->input('order') == 'asc' ? 'asc' : 'desc');        
         
 		return response()->json($query->paginate($pageSize));

@@ -17,7 +17,7 @@ class Place extends Model
 
     protected $appends = ['_links'];
 
-    public function visit()
+    public function visits()
     {
         return $this->hasMany(Visit::class);
     }

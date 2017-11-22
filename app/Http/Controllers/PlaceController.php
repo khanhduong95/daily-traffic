@@ -14,7 +14,7 @@ class PlaceController extends Controller
 	public function index(Request $request)
 	{
 		$pageSize = $this->getPageSize($request->input('per_page'));
-        if ($request->has('statistics'))
+        if ($request->input('statistics'))
             $query = Place::select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Visit::TABLE_NAME.'.time) as frequency'))
                    ->leftJoin(Visit::TABLE_NAME, Visit::TABLE_NAME.'.place_id', '=', Place::TABLE_NAME.'.id')
                    ->groupBy(Visit::TABLE_NAME.'.place_id')
@@ -36,7 +36,7 @@ class PlaceController extends Controller
 
 		$pageSize = $this->getPageSize($request->input('per_page'));
         $query = $user->places();
-        if ($request->has('statistics'))
+        if ($request->input('statistics'))
             $query = $query->select(Place::TABLE_NAME.'.*', app('db')->raw('count('.Visit::TABLE_NAME.'.time) as frequency'))
                    ->groupBy(Visit::TABLE_NAME.'.place_id')
                    ->orderBy('frequency', $request->input('order') == 'asc' ? 'asc' : 'desc');

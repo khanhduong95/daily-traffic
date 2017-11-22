@@ -39,7 +39,7 @@ class VisitController extends Controller
 
 		$pageSize = $this->getPageSize($request->input('per_page'));
 
-		$res = $place->visit()->orderBy('id', 'desc')->paginate($pageSize);
+		$res = $place->visits()->orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
 	}
 
@@ -52,7 +52,7 @@ class VisitController extends Controller
 
 		$pageSize = $this->getPageSize($request->input('per_page'));
 
-		$res = $place->visit()->where('user_id', $user_id)->orderBy('id', 'desc')->paginate($pageSize);
+		$res = $place->visits()->where('user_id', $user_id)->orderBy('id', 'desc')->paginate($pageSize);
 		return response()->json($res);
 	}
 

@@ -18,7 +18,6 @@ class VisitTest extends TestCase
     public function testAddOneDay()
     {
         $user = factory(User::class)->create();
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         $userId = User::where('email', $user->email)->firstOrFail()->id;
         
         $place = factory(Place::class)->create();
@@ -39,7 +38,7 @@ class VisitTest extends TestCase
 
         $this->assertEquals(201, $this->response->status());
 
-        $this->seeInDatabase(Visit::TABLE_NAME, [
+        $this->seeInDatabase('visits', [
             'user_id' => $userId,
             'place_id' => $placeId,
             'time' => $date.' '.$hour.':'.$minute.':00',
@@ -59,7 +58,6 @@ class VisitTest extends TestCase
     public function testDeleteOneDay()
     {
         $user = factory(User::class)->create();
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         $userId = User::where('email', $user->email)->firstOrFail()->id;
 
         $place = factory(Place::class)->create();                
@@ -82,7 +80,7 @@ class VisitTest extends TestCase
 
         $this->assertEquals(204, $this->response->status());
 
-        $this->missingFromDatabase(Visit::TABLE_NAME, [
+        $this->missingFromDatabase('visits', [
             'id' => $visitId,
         ]);
     }
@@ -90,7 +88,6 @@ class VisitTest extends TestCase
     public function testAddMultiDay()
     {
         $user = factory(User::class)->create();
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         $userId = User::where('email', $user->email)->firstOrFail()->id;
 
         $place = factory(Place::class)->create();
@@ -119,7 +116,7 @@ class VisitTest extends TestCase
 
         $this->assertEquals(201, $this->response->status());
 
-        $this->seeInDatabase(Place::TABLE_NAME, [
+        $this->seeInDatabase('places', [
             'latitude' => $place->latitude,
             'longitude' => $place->longitude,
         ]);
@@ -133,7 +130,6 @@ class VisitTest extends TestCase
     public function testDeleteMultiDay()
     {
         $user = factory(User::class)->create();
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         $userId = User::where('email', $user->email)->firstOrFail()->id;
 
         $place = factory(Place::class)->create();
@@ -158,10 +154,9 @@ class VisitTest extends TestCase
 
         $this->assertEquals(204, $this->response->status());
         
-        $this->missingFromDatabase(Visit::TABLE_NAME, [
+        $this->missingFromDatabase('visits', [
             'user_id' => $userId,
             'place_id' => $placeId,
         ]);
-    }
-        
+    }        
 }

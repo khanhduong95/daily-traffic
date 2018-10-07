@@ -12,10 +12,10 @@ use Illuminate\Http\Request;
 class HomeController extends Controller
 {
 
-	public function index(Request $request)
-	{        
+    public function index(Request $request)
+    {
         $baseUrl = $request->url();
-		return response()->json([
+        return response()->json([
             '_links' => [
                 'self' => $baseUrl,
                 'token' => $baseUrl.'/token',
@@ -25,5 +25,5 @@ class HomeController extends Controller
                 Permission::TABLE_NAME => $baseUrl.'/'.Permission::TABLE_NAME,
             ],
         ]);
-	}
+    }
 }

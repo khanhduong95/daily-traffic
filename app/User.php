@@ -20,11 +20,7 @@ class User extends Model implements
      * @var array
      */
 
-    const TABLE_NAME = 'users';
-
-    protected $fillable = [
-        'name', 'email',
-    ];
+    protected $fillable = ['email', 'name', 'birthday', 'phone'];
 
     protected $appends = ['_links'];
 
@@ -34,7 +30,11 @@ class User extends Model implements
      * @var array
      */
     protected $hidden = [
-        'password', 'app_password', 'token', 'app_token', 'current_token', 'remember_token', 'created_at', 'updated_at',
+        'password',
+        'token',
+        'remember_token',
+        'created_at',
+        'updated_at',
     ];
 
     public function permissions()
@@ -44,25 +44,27 @@ class User extends Model implements
 
     public function places()
     {
-        return $this->belongsToMany(Place::class, Visit::TABLE_NAME);
+        return $this->belongsToMany(Place::class, 'visits');
     }
 
     public function getLinksAttribute()
     {
         $request = app('request');
-        if ($request->has('previous_path'))
+        if ($request->has('previous_path')) {
             $currentUrl = url($request->input('previous_path'));
-        else
+        } else {
             $currentUrl = $request->url();
-
+        }
+        
         $idPath = '/'.$this->id;
-        if (! ends_with($currentUrl, $idPath))
+        if (! ends_with($currentUrl, $idPath)) {
             $currentUrl .= $idPath;
+        }
 
         return [
             'self' => $currentUrl,
-            Place::TABLE_NAME => $currentUrl.'/'.Place::TABLE_NAME,
-            Permission::TABLE_NAME => $currentUrl.'/'.Permission::TABLE_NAME,
+            'places' => $currentUrl.'/places',
+            'permissions' => $currentUrl.'/permissions',
         ];
     }
 }

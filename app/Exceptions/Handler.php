@@ -49,24 +49,22 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Exception $e)
     {
-	    $cause = $e->getPrevious();
-	    if ($cause != null) $e = $cause;
-
+        $cause = $e->getPrevious();
+        if ($cause != null) {
+            $e = $cause;
+        }
+        
         $status = null;
         $message = null;
         if ($e instanceof HttpResponseException) {
             $status = $e->getResponse()->getStatusCode();
-        }
-        elseif ($e instanceof ModelNotFoundException) {
+        } elseif ($e instanceof ModelNotFoundException) {
             $e = new NotFoundHttpException($e->getMessage(), $e);
-        } 
-        elseif ($e instanceof AuthorizationException) {
+        } elseif ($e instanceof AuthorizationException) {
             $e = new HttpException(403, $e->getMessage());
-        }
-        elseif ($e instanceof AuthenticationException) {
-            $e = new UnauthorizedHttpException("Bearer realm=\"Please enter your valid API token.\"", $e->getMessage());
-        }
-        elseif ($e instanceof ValidationException && $e->getResponse()) {
+        } elseif ($e instanceof AuthenticationException) {
+            $e = new UnauthorizedHttpException('Bearer realm="Please enter your valid API token."', $e->getMessage());
+        } elseif ($e instanceof ValidationException && $e->getResponse()) {
             $status = $e->getResponse()->getStatusCode();
             $message = $e->validator->errors()->first();
         }
@@ -79,6 +77,6 @@ class Handler extends ExceptionHandler
             'type' => get_class($e),
         ], $status ? $status : $fe->getStatusCode(), $fe->getHeaders());
 
-	    // return parent::render($request, $e);
+        // return parent::render($request, $e);
     }
 }

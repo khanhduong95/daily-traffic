@@ -7,33 +7,28 @@ use App\Permission;
 
 class UserPolicy
 {
-	public function read(User $user, User $targetUser)
-	{
-		if ($user->id == $targetUser->id)
-			return true;
-	    	    
-        if (substr_count($user->current_token, '.') < 2)
-            return false;
+    public function read(User $user, User $targetUser)
+    {
+        if ($user->id == $targetUser->id) {
+            return true;
+        }
 
-		return Permission::where([
+        return Permission::where([
             'user_id' => $user->id,
-            'table_name' => User::TABLE_NAME,
+            'table_name' => 'users',
         ])->first() != null;
-	}
+    }
 
-	public function write(User $user, User $targetUser)
-	{
-        if (substr_count($user->current_token, '.') < 2)
-            return false;
-
-		if ($user->id == $targetUser->id)
-			return true;
-	    
-		return Permission::where([
+    public function write(User $user, User $targetUser)
+    {
+        if ($user->id == $targetUser->id) {
+            return true;
+        }
+        
+        return Permission::where([
             'user_id' => $user->id,
-            'table_name' => User::TABLE_NAME,
+            'table_name' => 'users',
             'write' => true,
         ])->first() != null;
-	}
-
+    }
 }

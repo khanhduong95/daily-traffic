@@ -6,31 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class Permission extends Model
 {
-	const TABLE_NAME = 'permissions';
-	static $models = [
-		   User::class,
-		   Place::class,
-		   Visit::class,
-		   Permission::class,
-		   ];
+    public static $tables = ['users', 'places', 'visits', 'permissions'];
 
     protected $appends = ['_links'];
 
     public function getLinksAttribute()
     {
         $request = app('request');
-        if ($request->has('previous_path'))
+        if ($request->has('previous_path')) {
             $currentUrl = url($request->input('previous_path'));
-        else
+        } else {
             $currentUrl = $request->url();
-
+        }
+        
         $idPath = '/'.$this->id;
-        if (! ends_with($currentUrl, $idPath))
+        if (! ends_with($currentUrl, $idPath)) {
             $currentUrl .= $idPath;
-
+        }
+        
         return [
             'self' => $currentUrl,
-            'user' => route(User::TABLE_NAME.'.detail', ['id' => $this->user_id]),
+            'user' => route('users.detail', ['id' => $this->user_id]),
         ];
     }
 }

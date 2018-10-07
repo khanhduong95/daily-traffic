@@ -28,7 +28,7 @@ class PlaceTest extends TestCase
         
         $this->assertEquals(201, $this->response->status());
 
-        $this->seeInDatabase(Place::TABLE_NAME, [
+        $this->seeInDatabase('places', [
             'latitude' => $place->latitude,
             'longitude' => $place->longitude,
         ]);
@@ -47,14 +47,11 @@ class PlaceTest extends TestCase
                  ->firstOrFail()->id;
 
         Permission::insert([
-            'table_name' => Place::TABLE_NAME,
+            'table_name' => 'places',
             'user_id' => $userId,
             'write' => true,
         ]);
         
-        //TOKEN
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
-
         $this->actingAs($user)
             ->put('/api/places/'.$placeId, [
                 'latitude' => $newPlace->latitude,
@@ -63,25 +60,15 @@ class PlaceTest extends TestCase
 
         $this->assertEquals(204, $this->response->status());
 
-        $this->seeInDatabase(Place::TABLE_NAME, [
+        $this->seeInDatabase('places', [
             'id' => $placeId,
             'latitude' => $newPlace->latitude,
             'longitude' => $newPlace->longitude,
         ]);
-
-        //TOKEN
-        $user->current_token = dechex(time()).'.'.str_random();
-
-        $this->actingAs($user)
-            ->put('/api/places/'.$placeId);
         
-        $this->assertEquals(403, $this->response->status());
-        
-        Permission::where('table_name', Place::TABLE_NAME)
+        Permission::where('table_name', 'places')
             ->where('user_id', $userId)
             ->delete();      
-        //TOKEN
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
 
         $this->actingAs($user)
             ->put('/api/places/'.$placeId);
@@ -101,20 +88,17 @@ class PlaceTest extends TestCase
                  ->firstOrFail()->id;
 
         Permission::insert([
-            'table_name' => Place::TABLE_NAME,
+            'table_name' => 'places',
             'user_id' => $userId,
             'write' => true,
         ]);
-        
-        //TOKEN
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
         
         $this->actingAs($user)
             ->delete('/api/places/'.$placeId);
         
         $this->assertEquals(204, $this->response->status());
         
-        $this->missingFromDatabase(Place::TABLE_NAME, [
+        $this->missingFromDatabase('places', [
             'id' => $placeId,
         ]);
     }

@@ -26,34 +26,23 @@ class PermissionTest extends TestCase
         
         Permission::insert([
             'user_id' => $adminId,
-            'table_name' => Permission::TABLE_NAME,
+            'table_name' => 'permissions',
             'write' => true,
         ]);
 
-        $admin->current_token = dechex(time()).'.'.str_random().'.'.str_random();
-
         $this->actingAs($admin)
             ->post('/api/users/'.$userId.'/permissions', [
-                'table_name' => User::TABLE_NAME,
+                'table_name' => 'users',
                 'write' => true,
             ]);
 
         $this->assertEquals(201, $this->response->status());
         
-        $this->seeInDatabase(Permission::TABLE_NAME, [
+        $this->seeInDatabase('permissions', [
             'user_id' => $userId,
-            'table_name' => User::TABLE_NAME,
+            'table_name' => 'users',
             'write' => true,
         ]);
-
-        $admin->current_token = dechex(time()).'.'.str_random();
-
-        $this->actingAs($admin)
-            ->post('/api/users/'.$userId.'/permissions');
-        
-        $this->assertEquals(403, $this->response->status());
-
-        $user->current_token = dechex(time()).'.'.str_random().'.'.str_random();
 
         $this->actingAs($user)
             ->post('/api/users/'.$userId.'/permissions');
@@ -72,21 +61,19 @@ class PermissionTest extends TestCase
         Permission::insert([
             [
                 'user_id' => $adminId,
-                'table_name' => Permission::TABLE_NAME,
+                'table_name' => 'permissions',
                 'write' => true,
             ],
             [
                 'user_id' => $userId,
-                'table_name' => Permission::TABLE_NAME,
+                'table_name' => 'permissions',
                 'write' => false,
             ],
         ]);
 
         $permissionId = Permission::where('user_id', $userId)
-                      ->where('table_name', Permission::TABLE_NAME)
+                      ->where('table_name', 'permissions')
                       ->firstOrFail()->id;
-
-        $admin->current_token = dechex(time()).'.'.str_random().'.'.str_random();
 
         $this->actingAs($admin)
             ->put('/api/permissions/'.$permissionId, [
@@ -95,10 +82,10 @@ class PermissionTest extends TestCase
         
         $this->assertEquals(204, $this->response->status());
         
-        $this->seeInDatabase(Permission::TABLE_NAME, [
+        $this->seeInDatabase('permissions', [
             'id' => $permissionId,
             'user_id' => $userId,
-            'table_name' => Permission::TABLE_NAME,
+            'table_name' => 'permissions',
             'write' => true,
         ]);
     }
@@ -114,30 +101,27 @@ class PermissionTest extends TestCase
         Permission::insert([
             [
                 'user_id' => $adminId,
-                'table_name' => Permission::TABLE_NAME,
+                'table_name' => 'permissions',
                 'write' => true,
             ],
             [
                 'user_id' => $userId,
-                'table_name' => Permission::TABLE_NAME,
+                'table_name' => 'permissions',
                 'write' => false,
             ],
         ]);
 
         $permissionId = Permission::where('user_id', $userId)
-                      ->where('table_name', Permission::TABLE_NAME)
+                      ->where('table_name', 'permissions')
                       ->firstOrFail()->id;
-
-        $admin->current_token = dechex(time()).'.'.str_random().'.'.str_random();
 
         $this->actingAs($admin)
             ->delete('/api/permissions/'.$permissionId);
         
         $this->assertEquals(204, $this->response->status());
         
-        $this->missingFromDatabase(Permission::TABLE_NAME, [
+        $this->missingFromDatabase('permissions', [
             'id' => $permissionId,
         ]);
-    }
-    
+    }    
 }

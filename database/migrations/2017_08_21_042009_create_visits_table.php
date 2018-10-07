@@ -23,14 +23,14 @@ class CreateVisitsTable extends Migration
 					->references('id')->on('users')
 					->onUpdate('cascade')
 					->onDelete('cascade');
-				$table->index('user_id');
+				// $table->index('user_id');
 
 				$table->bigInteger('place_id')->unsigned();
 				$table->foreign('place_id')
 					->references('id')->on('places')
 					->onUpdate('cascade')
 					->onDelete('cascade');
-				$table->index('place_id');
+				// $table->index('place_id');
 
 				$table->unique([
 						'time', 
